@@ -7,4 +7,6 @@ int main(int narg, char *argv[]) {
 
     // Get the ms parameters
     myNetwork.toms();
+
+    return 0;
 }
