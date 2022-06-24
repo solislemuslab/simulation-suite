@@ -10,7 +10,7 @@
 
 ### Read a network in with Newick format
 
-This is in the `main.cpp` file right now:
+This is in the `main.cpp` file right now, so `main.cpp` should just be adjusted for now to test different Newick strings:
 
 ```cpp
 #include "Network.hpp"
@@ -26,6 +26,7 @@ int main(int narg, char *argv[]) {
 
 ```cpp
 #include "Network.hpp"
+
 int main(int narg, char *argv[]) {
   // Read the network from Newick
   std::string myNewick = "((1,((2,(3,(4)Y#H1)g)e,(((Y#H1,5)h,6)f)X#H2)c)a,((X#H2,7)d,8)b)r;";
