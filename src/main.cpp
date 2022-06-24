@@ -2,7 +2,7 @@
 
 int main(int narg, char *argv[]) {
     // Read in network from Newick string
-    std::string myNewick = "((1,((2,(3,(4)Y#H1)g)e,(((Y#H1,5)h,6)f)X#H2)c)a,((X#H2,7)d,8)b)r;";
+    std::string myNewick = "(((A:::,(B)#H1:::0.9)e,(C,#H1:::0.1)f)g,D:::)h;";
     Network myNetwork(myNewick);
 
     // Get the ms parameters

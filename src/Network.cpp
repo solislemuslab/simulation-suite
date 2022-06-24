@@ -18,12 +18,17 @@ Network::Network(std::string newickStr) {
 
     // build up the Network from the parsed Newick string
     bool readingBranchLength = false;
+    bool readingBootSupport = false;
+    bool readingGamma = false;
     bool namingInternalNode = false;
     Node* p = NULL;
     for (int i=0; i<tokens.size(); i++) {
         std::string token = tokens[i];
         //std::cout << token << std::endl;
         if (token == "(") {
+            readingBranchLength = false;
+            readingBootSupport = false;
+            readingGamma = false;
             namingInternalNode = false;
             // new node
             Node* newNode = new Node;
@@ -31,7 +36,7 @@ Network::Network(std::string newickStr) {
             if (p == NULL)
                 root = newNode;
             else {
-                newNode->setPrimAnc(p);
+                newNode->setMajorAnc(p);
                 if (p->getLft() == NULL)
                     p->setLft(newNode);
                 else
@@ -40,20 +45,37 @@ Network::Network(std::string newickStr) {
             
             p = newNode;
         } else if (token == ")" || token == ",") {
+            readingBranchLength = false;
+            readingBootSupport = false;
+            readingGamma = false;
             namingInternalNode = false;
             if(token == ")")
                 namingInternalNode = true;
 
             // move down one node
-            if (p->getPrimAnc() == NULL) {
+            if (p->getMajorAnc() == NULL) {
                 std::cout << "Error: We cannot find an expected ancestor at i=" << i << "; p == root gives: " << (p == root) << std::endl;
                 exit(1);
             }
-            p = p->getPrimAnc();
+            p = p->getMajorAnc();
         } else if (token == ":") {
             namingInternalNode = false;
-            // begin reading a branch length
-            readingBranchLength = true;
+
+            // if the field for branch length, boot support, or inheritance probability are left blank, then we end up here.
+            // so, we want to progress to the next step of reading :br_len:boot_supp:inher_prob
+            if(readingBranchLength) {
+                readingBranchLength = false;
+                readingBootSupport = true;
+            } else if(readingBootSupport) {
+                readingBootSupport = false;
+                readingGamma = true;
+            } else if(readingGamma) {
+                std::cout << "Error: Read a sequence of four colons (possibly with names/numbers in between some of them). This is not allowed by the format; quitting." << std::endl;
+                exit(-1);
+            } else {
+                // begin reading a branch length
+                readingBranchLength = true;
+            }
         } else if (token == ";") {
             namingInternalNode = false;
             // finished!
@@ -64,16 +86,43 @@ Network::Network(std::string newickStr) {
         } else {
             // we have a taxon name or a branch length
             if (readingBranchLength == true) {
+                cout << "BREAK HERE PLEASE" << std::endl;
+                cout << "stod on \"" << token << "\"" << std::endl;
                 double x = std::stod(token);
                 p->setBranchLength(x);
                 readingBranchLength = false;
+
+                // Is there another ':' coming up? We expect them in batches of 3
+                if(tokens[i+1] == ":") {
+                    readingBootSupport = true;
+                    i++;
+                }
+            } else if(readingBootSupport) {
+                cout << "BREAK HERE PLEASE" << std::endl;
+                cout << "stod on \"" << token << "\"" << std::endl;
+                double x = std::stod(token);
+                p->setBootSupport(x);
+                readingBootSupport = false;
+
+                // Is there another ':' coming up? We expect them in batches of 3
+                if(tokens[i+1] == ":") {
+                    readingGamma = true;
+                    i++;
+                }
+            } else if(readingGamma) {
+                cout << "BREAK HERE PLEASE" << std::endl;
+                cout << "stod on \"" << token << "\"" << std::endl;
+                double x = std::stod(token);
+                p->setGamma(x);
+                cout << std::endl << std::endl << "Setting gamma to " << x << std::endl << std::endl;
+                readingGamma = false;
             } else if(namingInternalNode) {
                 cout << "\tNaming internal node at i=" << i <<  "." << std::endl;
                 p->setName(token);
             } else {
                 Node* newNode = new Node;
                 nodes.push_back(newNode);
-                newNode->setPrimAnc(p);
+                newNode->setMajorAnc(p);
                 
                 if (p->getLft() == NULL)
                     p->setLft(newNode);
@@ -114,19 +163,7 @@ Network::Network(std::string newickStr) {
     patchNewick();
 
     cout << std::endl << std::endl;
-    for(int i = 0; i < nodes.size(); i++) {
-        cout << "Node " << i << ": " << nodes[i]->getName() << std::endl << std::flush;
-        if(nodes[i]->getLft() != NULL)
-            cout << "\tLeft: " << nodes[i]->getLft()->getName() << std::endl << std::flush;
-        if(nodes[i]->getRht() != NULL)
-            cout << "\tRight: " << nodes[i]->getRht()->getName() << std::endl << std::flush;
-            
-        if(nodes[i]->getPrimAnc() != NULL)
-            cout << "\tPrim anc: " << nodes[i]->getPrimAnc()->getName() << std::endl << std::flush;
-        if(nodes[i]->getHybAnc() != NULL)
-            cout << "\tHyb anc: " << nodes[i]->getHybAnc()->getName() << std::endl << std::flush;
-    }
-    cout << "Hybrids: " << hybrids << std::endl;
+    listNodes();
     easyDbg();
 }
 
@@ -182,10 +219,10 @@ void Network::patchNewick() {
                 // This is the copy of the node that we are killing
                 Node *dead = nodes[nodeIndices[idx]];
 
-                // Make the primAnc of the dead node's child into p
+                // Make the MajorAnc of the dead node's child into p
                 // The dead node's child should always be a left child, but better safe than sorry...
                 Node *deadChild = dead->getLft() != NULL ? dead->getLft() : dead->getRht();
-                deadChild->setPrimAnc(p);
+                deadChild->setMajorAnc(p);
 
                 // Now make the child of the dead node p's child
                 // Make sure we aren't overriding a node if p already has a child
@@ -194,14 +231,48 @@ void Network::patchNewick() {
                 else
                     p->setLft(deadChild);
 
-                // Move the edge running from dead node's anc->dead node to be dead node's anc->p
-                if(dead->getPrimAnc()->getLft() == dead)
-                    dead->getPrimAnc()->setLft(p);
-                else
-                    dead->getPrimAnc()->setRht(p);
+                // We need to make sure that we set MajorAnc and MinorAnc properly!!!
+                // MajorAnc will be the ancestor from which the node receives >50% of its genes, and MinorAnc
+                // its complement. (In the case of a tie, it doesn't matter, so we don't do anything special...)
+                if(dead->getGamma() > p->getGamma()) {
+                    // Higher inheritance probability coming from the ancestor of dead
+                    p->setMinorAnc(p->getMajorAnc());
+                    p->setMajorAnc(dead->getMajorAnc());
 
-                // Make p's hybrid ancestor the dead node's ancestor
-                p->setHybAnc(dead->getPrimAnc());
+                    // Set the gammas for each of p's ancestors
+                    if(p->getMajorAnc()->getLft() == p)
+                        p->getMajorAnc()->setGammaLft(dead->getGamma());
+                    else
+                        p->getMajorAnc()->setGammaRht(dead->getGamma());
+                    
+                    // Now the minor ancestor
+                    if(p->getMinorAnc()->getLft() == p)
+                        p->getMinorAnc()->setGammaLft(p->getGamma());
+                    else
+                        p->getMinorAnc()->setGammaRht(p->getGamma());
+                } else {
+                    // Higher inheritance probability coming from the ancestor of p
+                    // p's MajorAnc is already correct, so just set the MinorAnc
+                    p->setMinorAnc(dead->getMajorAnc());
+
+                    // Set the gammas for each of p's ancestors
+                    if(p->getMajorAnc()->getLft() == p)
+                        p->getMajorAnc()->setGammaLft(p->getGamma());
+                    else
+                        p->getMajorAnc()->setGammaRht(p->getGamma());
+                    
+                    // Now the minor ancestor
+                    if(p->getMinorAnc()->getLft() == p)
+                        p->getMinorAnc()->setGammaLft(dead->getGamma());
+                    else
+                        p->getMinorAnc()->setGammaRht(dead->getGamma());
+                }
+
+                // Set p as the proper child of its new ancestor
+                if(dead->getMajorAnc()->getLft() == dead)
+                    dead->getMajorAnc()->setLft(p);
+                else
+                    dead->getMajorAnc()->setRht(p);
 
                 // Set the dead node to null
                 removeMe.push_back(nodeIndices[idx]);
@@ -269,7 +340,7 @@ void Network::writeNetwork(Node* p, std::stringstream& ss) {
                 ss << ",";
                 writeNetwork (p->getRht(), ss);
             }
-            if (p->getPrimAnc() == NULL)
+            if (p->getMajorAnc() == NULL)
                 ss << ")";
             else
                 // Use this line if you do not want to include branch lengths
@@ -287,8 +358,11 @@ Network::~Network(void) {
 }
 
 void Network::listNodes(void) {
-    for(int i = 0; i < nodes.size(); i++)
-        nodes[i]->print();
+    for(int i = 0; i < nodes.size(); i++) {
+        std::cout << "Node " << i << ": " << nodes[i]->getName() << std::endl << std::flush;
+        nodes[i]->printInfo();
+    }
+    cout << "Hybrids: " << hybrids << std::endl;
 }
 
 void Network::toms(void) {
@@ -316,7 +390,7 @@ void Network::toms(void) {
     // TODO: Definitely need to go through every event chronologically. Otherwise directionality is lost.
     // In order to do it chronologically: idk. have to think about this more.
     // Also: maybe we don't actually have to do it chronologically, and the direction can be preserved b/c we specifically
-    //       assign hybAnc() in a way that can be used to maintain directionality.
+    //       assign MinorAnc() in a way that can be used to maintain directionality.
     while(activeNodes.size() > 0) {
         // Run a for loop that tries to resolve every node in activeNodes
         std::vector<int> removeMe;
@@ -329,52 +403,58 @@ void Network::toms(void) {
                 exit(-1);
             }
 
-            Node *pAnc = p->getPrimAnc();
-            Node *hAnc = p->getHybAnc();
-            // a. if only one ancestor (this will only ever take place when there is a primAnc and NOT a hybAnc)
-            if(pAnc != NULL && hAnc == NULL) {
+            Node *majAnc = p->getMajorAnc();
+            Node *minAnc = p->getMinorAnc();
+            // a. if only one ancestor (this will only ever take place when there is a MajorAnc and NOT a MinorAnc)
+            if(majAnc != NULL && minAnc == NULL) {
                 // I. if the anc is NOT named: take the anc
-                if(blankName(pAnc)) {
-                    pAnc->setName(p->getName());
+                if(blankName(majAnc)) {
+                    majAnc->setName(p->getName());
 
-                    // Remove p and add pAnc
+                    // Remove p and add majAnc
                     removeMe.push_back(i);
-                    addMe.push_back(pAnc);
+                    addMe.push_back(majAnc);
                 }
                 // II. if anc named: coalesce *INTO* the ancestor
                 else {
-                    cout << "-ej t " << p->getName() << " " << pAnc->getName() << std::endl;
+                    cout << "-ej t " << p->getName() << " " << majAnc->getName() << std::endl;
 
-                    // Remove p; pAnc is already named, so if it still has more potential things to do, it should be
+                    // Remove p; majAnc is already named, so if it still has more potential things to do, it should be
                     // in activeNodes already. So we don't need to touch it.
                     removeMe.push_back(i);
                 }
             }
             // b. if we have two ancestors
-            else if(pAnc != NULL && hAnc != NULL) {
-                // I. both ancs unnamed: split, give primAnc our name and give hybAnc a new name
-                if(blankName(pAnc) && blankName(hAnc)) {
+            else if(majAnc != NULL && minAnc != NULL) {
+                // I. both ancs unnamed: split, give MajorAnc our name and give MinorAnc a new name
+                if(blankName(majAnc) && blankName(minAnc)) {
+                    // p is coalescing into majAnc, so gamma on this split comes from majAnc
+                    double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
+
                     // Split
-                    cout << "-es t " << p->getName() << " gamma" << std::endl;
+                    cout << "-es t " << p->getName() << " " << gamma << std::endl;
 
-                    // Give primAnc our name and add primAnc to activeNodes
-                    pAnc->setName(p->getName());
-                    addMe.push_back(pAnc);
+                    // Give MajorAnc our name and add MajorAnc to activeNodes
+                    majAnc->setName(p->getName());
+                    addMe.push_back(majAnc);
 
-                    // Give hybAnc its new name and add it to activeNodes
-                    hAnc->setName(popnCounter++);
-                    addMe.push_back(hAnc);
+                    // Give MinorAnc its new name and add it to activeNodes
+                    minAnc->setName(popnCounter++);
+                    addMe.push_back(minAnc);
 
                     // Remove p from activeNodes
                     removeMe.push_back(i);
                 }
                 // II. if only one anc is named: split, give the blank anc a new name, and then join with the named anc
-                else if(blankName(pAnc) != blankName(hAnc)) {
+                else if(blankName(majAnc) != blankName(minAnc)) {
+                    Node *namedAnc = blankName(majAnc) ? minAnc : majAnc;
+                    Node *unnamedAnc = blankName(majAnc) ? majAnc : minAnc;
+
+                    // p is coalescing into unnamedAnc, so gamma comes from unnamedAnc 
+                    double gamma = (unnamedAnc->getLft() == p) ? unnamedAnc->getGammaLft() : unnamedAnc->getGammaRht();
+
                     // Split
-                    cout << "-es t " << p->getName() << " gamma" << std::endl;
-                    
-                    Node *namedAnc = blankName(pAnc) ? hAnc : pAnc;
-                    Node *unnamedAnc = blankName(pAnc) ? pAnc : hAnc;
+                    cout << "-es t " << p->getName() << " " << gamma << std::endl;
 
                     // Give the blank anc a new name and add it to the queue
                     unnamedAnc->setName(popnCounter++);
@@ -388,14 +468,17 @@ void Network::toms(void) {
                 }
                 // III. if both ancs are named, split, then join both the new lineages with the existing ones
                 else {
+                    // p is coalescing into majAnc, so gamma comes from majAnc
+                    double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
+
                     // Split
-                    cout << "-es t " << p->getName() << " gamma" << std::endl;
+                    cout << "-es t " << p->getName() << " " << gamma << std::endl;
 
                     // Join left
-                    cout << "-ej t " << p->getName() << " " << pAnc->getName() << std::endl;
+                    cout << "-ej t " << p->getName() << " " << majAnc->getName() << std::endl;
 
                     // Join right
-                    cout << "-ej t " << popnCounter++ << " " << hAnc->getName() << std::endl;
+                    cout << "-ej t " << popnCounter++ << " " << minAnc->getName() << std::endl;
 
                     // Remove p
                     removeMe.push_back(i);
