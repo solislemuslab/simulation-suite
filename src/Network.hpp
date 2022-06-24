@@ -34,8 +34,11 @@ class Network {
         bool blankName(Node *p);
 
     private:
-        std::vector<std::string> parseNewickFirstPass(std::string ns);
-        void patchNewick();
+        std::vector<std::string> parseNewick(std::string ns);
+        void patchNetwork(void);
+        void setTimes(void);
+        void setTimeRecur(Node *p);
+        double totalTime;
 };
 
 #endif

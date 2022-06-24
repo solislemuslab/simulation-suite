@@ -14,7 +14,7 @@ std::string BLANK_NAME = "__$!&*#%*__";
 
 Network::Network(std::string newickStr) {
     hybrids = 0;
-    std::vector<std::string> tokens = parseNewickFirstPass(newickStr);
+    std::vector<std::string> tokens = parseNewick(newickStr);
 
     // build up the Network from the parsed Newick string
     bool readingBranchLength = false;
@@ -33,9 +33,9 @@ Network::Network(std::string newickStr) {
             // new node
             Node* newNode = new Node;
             nodes.push_back(newNode);
-            if (p == NULL)
+            if (p == NULL) {
                 root = newNode;
-            else {
+            } else {
                 newNode->setMajorAnc(p);
                 if (p->getLft() == NULL)
                     p->setLft(newNode);
@@ -86,10 +86,8 @@ Network::Network(std::string newickStr) {
         } else {
             // we have a taxon name or a branch length
             if (readingBranchLength == true) {
-                cout << "BREAK HERE PLEASE" << std::endl;
-                cout << "stod on \"" << token << "\"" << std::endl;
                 double x = std::stod(token);
-                p->setBranchLength(x);
+                p->setMajorBranchLength(x);
                 readingBranchLength = false;
 
                 // Is there another ':' coming up? We expect them in batches of 3
@@ -98,8 +96,6 @@ Network::Network(std::string newickStr) {
                     i++;
                 }
             } else if(readingBootSupport) {
-                cout << "BREAK HERE PLEASE" << std::endl;
-                cout << "stod on \"" << token << "\"" << std::endl;
                 double x = std::stod(token);
                 p->setBootSupport(x);
                 readingBootSupport = false;
@@ -110,14 +106,10 @@ Network::Network(std::string newickStr) {
                     i++;
                 }
             } else if(readingGamma) {
-                cout << "BREAK HERE PLEASE" << std::endl;
-                cout << "stod on \"" << token << "\"" << std::endl;
                 double x = std::stod(token);
                 p->setGamma(x);
-                cout << std::endl << std::endl << "Setting gamma to " << x << std::endl << std::endl;
                 readingGamma = false;
             } else if(namingInternalNode) {
-                cout << "\tNaming internal node at i=" << i <<  "." << std::endl;
                 p->setName(token);
             } else {
                 Node* newNode = new Node;
@@ -160,14 +152,90 @@ Network::Network(std::string newickStr) {
             nodes[i]->setIndex(ndeIdx++);
     }
 
-    patchNewick();
+    // Stitch the hybrid nodes together
+    patchNetwork();
+
+    // Add time information to the nodes
+    setTimes();
 
     cout << std::endl << std::endl;
     listNodes();
     easyDbg();
 }
 
-std::vector<std::string> Network::parseNewickFirstPass(std::string ns) {
+void Network::setTimes(void) {
+    // First, find all the leaves. We are storing branch lengths of INCOMING branches,
+    // so it will be easiest to calculate node times going from the ground up.
+    // This is also how ms expects times to be, which is the main reason this is being
+    // implemented, so yay!
+    std::vector<Node*> leaves;
+    for(int i = 0; i < nodes.size(); i++) {
+        if(nodes[i] == NULL)
+            continue;
+        
+        if(nodes[i]->getLft() == NULL && nodes[i]->getRht() == NULL)
+            leaves.push_back(nodes[i]);
+    }
+
+    // Now, go through and set the time on all nodes. Time is time from present.
+    // We do this recursively because it is the easiest to implement
+    for(Node *leaf : leaves) {
+        leaf->setTime(0);
+        setTimeRecur(leaf);
+    }
+}
+
+void Network::setTimeRecur(Node *p) {
+    Node *majAnc = p->getMajorAnc();
+    Node *minAnc = p->getMinorAnc();
+
+    // check if majAnc exists
+    if(majAnc != NULL) {
+        // if it exists and its time is not set, set its time and then continue recursively
+        if(majAnc->getTime() == -1) {
+            majAnc->setTime(p->getTime() + p->getMajorBranchLength());
+            setTimeRecur(majAnc);
+        }
+
+        // if it exists and its time IS set, two options:
+        //   1. kill this line of recursion here
+        //   2. continue the recursion anyways and check for consistency (should only
+        //      be used for debugging and testing)
+        //
+        // 2. is currently implemented.
+        else {
+            // return;
+            if(majAnc->getTime() != p->getTime() + p->getMajorBranchLength()) {
+                cout << "\t\tTIMES DO NOT MATCH - " << majAnc->getTime() << " != " << p->getTime() << " + " << p->getMajorBranchLength() << std::endl;
+            }
+            setTimeRecur(majAnc);
+        }
+    }
+    if(minAnc != NULL) {
+        // all the same stuff as with majAnc.
+        // if it exists and its time is not set, set its time and then continue recursively
+        if(minAnc->getTime() == -1) {
+            minAnc->setTime(p->getTime() + p->getMinorBranchLength());
+            setTimeRecur(minAnc);
+        }
+
+        // if it exists and its time IS set, two options:
+        //   1. kill this line of recursion here
+        //   2. continue the recursion anyways and check for consistency (should only
+        //      be used for debugging and testing)
+        //
+        // 2. is currently implemented.
+        else {
+            // return;
+            if(minAnc->getTime() != p->getTime() + p->getMinorBranchLength()) {
+                cout << "\t\tTIMES DO NOT MATCH - " << minAnc->getTime() << " != " << p->getTime() << " + " << p->getMinorBranchLength() << std::endl;
+            }
+            setTimeRecur(minAnc);
+        }
+    }
+}
+
+std::vector<std::string> Network::parseNewick(std::string ns) {
     std::vector<std::string> tks;
     for(int i = 0; i < ns.size(); i++) {
         char c = ns[i];
@@ -198,7 +266,7 @@ std::vector<std::string> Network::parseNewickFirstPass(std::string ns) {
 }
 
 // Patches up the hybrid edges on the network 
-void Network::patchNewick() {
+void Network::patchNetwork() {
     cout << std::endl << std::endl;
     std::vector<std::string> hybridNames;
     std::vector<int> nodeIndices;
@@ -237,7 +305,9 @@ void Network::patchNewick() {
                 if(dead->getGamma() > p->getGamma()) {
                     // Higher inheritance probability coming from the ancestor of dead
                     p->setMinorAnc(p->getMajorAnc());
+                    p->setMinorBranchLength(p->getMajorBranchLength());
                     p->setMajorAnc(dead->getMajorAnc());
+                    p->setMajorBranchLength(dead->getMajorBranchLength());
 
                     // Set the gammas for each of p's ancestors
                     if(p->getMajorAnc()->getLft() == p)
@@ -254,6 +324,7 @@ void Network::patchNewick() {
                     // Higher inheritance probability coming from the ancestor of p
                     // p's MajorAnc is already correct, so just set the MinorAnc
                     p->setMinorAnc(dead->getMajorAnc());
+                    p->setMinorBranchLength(dead->getMajorBranchLength());
 
                     // Set the gammas for each of p's ancestors
                     if(p->getMajorAnc()->getLft() == p)
@@ -417,7 +488,7 @@ void Network::toms(void) {
                 }
                 // II. if anc named: coalesce *INTO* the ancestor
                 else {
-                    cout << "-ej t " << p->getName() << " " << majAnc->getName() << std::endl;
+                    cout << "-ej " << majAnc->getTime() << " " << p->getName() << " " << majAnc->getName() << std::endl;
 
                     // Remove p; majAnc is already named, so if it still has more potential things to do, it should be
                     // in activeNodes already. So we don't need to touch it.
@@ -432,7 +503,7 @@ void Network::toms(void) {
                     double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
 
                     // Split
-                    cout << "-es t " << p->getName() << " " << gamma << std::endl;
+                    cout << "-es " << p->getTime() << " " << p->getName() << " " << gamma << std::endl;
 
                     // Give MajorAnc our name and add MajorAnc to activeNodes
                     majAnc->setName(p->getName());
@@ -454,14 +525,14 @@ void Network::toms(void) {
                     double gamma = (unnamedAnc->getLft() == p) ? unnamedAnc->getGammaLft() : unnamedAnc->getGammaRht();
 
                     // Split
-                    cout << "-es t " << p->getName() << " " << gamma << std::endl;
+                    cout << "-es " << p->getTime() << " " << p->getName() << " " << gamma << std::endl;
 
                     // Give the blank anc a new name and add it to the queue
                     unnamedAnc->setName(popnCounter++);
                     addMe.push_back(unnamedAnc);
 
                     // Join
-                    cout << "-ej t " << p->getName() << " " << namedAnc->getName() << std::endl;
+                    cout << "-ej " << namedAnc->getTime() << " " << p->getName() << " " << namedAnc->getName() << std::endl;
 
                     // Remove p
                     removeMe.push_back(i);
@@ -472,13 +543,13 @@ void Network::toms(void) {
                     double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
 
                     // Split
-                    cout << "-es t " << p->getName() << " " << gamma << std::endl;
+                    cout << "-es " << p->getTime() << " " << p->getName() << " " << gamma << std::endl;
 
                     // Join left
-                    cout << "-ej t " << p->getName() << " " << majAnc->getName() << std::endl;
+                    cout << "-ej " << majAnc->getTime() << " " << p->getName() << " " << majAnc->getName() << std::endl;
 
                     // Join right
-                    cout << "-ej t " << popnCounter++ << " " << minAnc->getName() << std::endl;
+                    cout << "-ej " << minAnc->getTime() << " " << popnCounter++ << " " << minAnc->getName() << std::endl;
 
                     // Remove p
                     removeMe.push_back(i);

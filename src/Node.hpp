@@ -15,9 +15,13 @@ class Node {
 
         int     getIndex(void) { return index; }
         std::string getName(void) { return name; }
-        double getBranchLength(void) { return branchLength; }
         void setLft(Node* p) { left = p; }
         void setRht(Node* p) { right = p; }
+        
+        double getMajorBranchLength(void) { return majorBranchLength; }
+        void setMajorBranchLength(double x) { majorBranchLength = x; }
+        double getMinorBranchLength(void) { return minorBranchLength; }
+        void setMinorBranchLength(double x) { minorBranchLength = x; }
         
         void setMajorAnc(Node* p) { majorAncestor = p; }
         void setMinorAnc(Node* p) { minorAncestor = p; }
@@ -32,13 +36,13 @@ class Node {
         void setBootSupport(double supp) { bootSupport = supp; }
         double getBootSupport(void) { return bootSupport; }
 
+        void setTime(double t) { time = t; }
+        double getTime(void) { return time; }
+
         void setIndex(int x) { index = x; }
         void setName(std::string s) { name = s; }
         void setName(int i) { name = std::to_string(i); }
-        void setBranchLength(double x) { branchLength = x; }
         void printInfo(void);
-        void setTime(double);
-        double getTime();
         bool touched = false;
     
     protected:
@@ -48,8 +52,9 @@ class Node {
         Node* minorAncestor;
         int index;
         std::string name;
-        double branchLength;
-        double time;
+        double majorBranchLength;    // NOTE: BRANCH LENGTHS CORRESPOND TO **INCOMING** BRANCHES, NOT OUTGOING
+        double minorBranchLength;
+        double time = -1;
         double gammaLft = 0;
         double gammaRht = 0;
         double bootSupport = -1;
