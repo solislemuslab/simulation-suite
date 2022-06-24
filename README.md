@@ -38,6 +38,7 @@ int main(int narg, char *argv[]) {
 ### Running the code
 
 ```shell
+cd src/
 make
 ./main
 ```
