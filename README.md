@@ -20,3 +20,10 @@ Network myNetwork(myNewick);
 ```cpp
 myNetwork.toms();
 ```
+
+### Running the code
+
+```shell
+make
+./run
+```
