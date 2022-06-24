@@ -12,18 +12,6 @@
 using namespace std;
 std::string BLANK_NAME = "__$!&*#%*__";
 
-int main(int argc, char *argv[]) {
-    // set the parameters of the simulation
-    int numSites = 100;
-    std::string myNewick = "(((A,(B)#H1),(C,#H1)),D);";
-    
-    // instantiate the Network and print the ms -ej and -es parameters
-    Network n(myNewick);
-    n.toms();
-
-    return 0;
-}
-
 Network::Network(std::string newickStr) {
     hybrids = 0;
     std::vector<std::string> tokens = parseNewickFirstPass(newickStr);
