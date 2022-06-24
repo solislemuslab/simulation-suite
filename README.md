@@ -17,7 +17,7 @@ This is in the `main.cpp` file right now, so `main.cpp` should just be adjusted 
 
 int main(int narg, char *argv[]) {
   // Read the network from Newick
-  std::string myNewick = "(((A:13.2:45:,(B::27:)#H1:::0.9),(C,#H1:::0.1)f)g,D);";
+  std::string myNewick = "(((A:1,(B:0.3)#H1:0.7::0.9)e:1,(C:0.5,#H1:0.2::0.1)f:1.5)g:0.3,D:2.3)h;";
   Network myNetwork(myNewick);
 }
 ```
@@ -33,6 +33,16 @@ int main(int narg, char *argv[]) {
   // Print out the ms parameters that go with the network
   myNetwork.toms();
 }
+```
+
+Running this with the network given in the Newick string above yields the output:
+
+```shell
+-es 0.3 2 0.9
+-ej 1 2 1
+-ej 0.5 5 3
+-ej 2 3 1
+-ej 2.3 1 4
 ```
 
 ### Running the code
