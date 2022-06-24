@@ -10,20 +10,35 @@
 
 ### Read a network in with Newick format
 
+This is in the `main.cpp` file right now:
+
 ```cpp
-std::string myNewick = "((1,((2,(3,(4)Y#H1)g)e,(((Y#H1,5)h,6)f)X#H2)c)a,((X#H2,7)d,8)b)r;";
-Network myNetwork(myNewick);
+#include "Network.hpp"
+
+int main(int narg, char *argv[]) {
+  // Read the network from Newick
+  std::string myNewick = "((1,((2,(3,(4)Y#H1)g)e,(((Y#H1,5)h,6)f)X#H2)c)a,((X#H2,7)d,8)b)r;";
+  Network myNetwork(myNewick);
+}
 ```
 
 ### Get the `ms` parameters that correspond to your network
 
 ```cpp
-myNetwork.toms();
+#include "Network.hpp"
+int main(int narg, char *argv[]) {
+  // Read the network from Newick
+  std::string myNewick = "((1,((2,(3,(4)Y#H1)g)e,(((Y#H1,5)h,6)f)X#H2)c)a,((X#H2,7)d,8)b)r;";
+  Network myNetwork(myNewick);
+  
+  // Print out the ms parameters that go with the network
+  myNetwork.toms();
+}
 ```
 
 ### Running the code
 
 ```shell
 make
-./run
+./main
 ```
