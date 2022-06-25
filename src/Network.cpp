@@ -1,5 +1,6 @@
 #include "Node.hpp"
 #include "Network.hpp"
+#include "MSEvents.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -436,7 +437,8 @@ void Network::listNodes(void) {
     cout << "Hybrids: " << hybrids << std::endl;
 }
 
-void Network::toms(void) {
+std::vector<MSEvent*> Network::toms(void) {
+    std::vector<MSEvent*> events;
     // First, gather & name all leaves while setting the names of non-leaves to null
     std::vector<Node*> activeNodes;
     int popnCounter = 1;
@@ -488,7 +490,7 @@ void Network::toms(void) {
                 }
                 // II. if anc named: coalesce *INTO* the ancestor
                 else {
-                    cout << "-ej " << majAnc->getTime() << " " << p->getName() << " " << majAnc->getName() << std::endl;
+                    events.push_back(new MSJoinEvent(majAnc->getTime(), p->getName(), majAnc->getName()));
 
                     // Remove p; majAnc is already named, so if it still has more potential things to do, it should be
                     // in activeNodes already. So we don't need to touch it.
@@ -503,7 +505,7 @@ void Network::toms(void) {
                     double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
 
                     // Split
-                    cout << "-es " << p->getTime() << " " << p->getName() << " " << gamma << std::endl;
+                    events.push_back(new MSSplitEvent(p->getTime(), p->getName(), gamma));
 
                     // Give MajorAnc our name and add MajorAnc to activeNodes
                     majAnc->setName(p->getName());
@@ -525,14 +527,14 @@ void Network::toms(void) {
                     double gamma = (unnamedAnc->getLft() == p) ? unnamedAnc->getGammaLft() : unnamedAnc->getGammaRht();
 
                     // Split
-                    cout << "-es " << p->getTime() << " " << p->getName() << " " << gamma << std::endl;
+                    events.push_back(new MSSplitEvent(p->getTime(), p->getName(), gamma));
 
                     // Give the blank anc a new name and add it to the queue
                     unnamedAnc->setName(popnCounter++);
                     addMe.push_back(unnamedAnc);
 
                     // Join
-                    cout << "-ej " << namedAnc->getTime() << " " << p->getName() << " " << namedAnc->getName() << std::endl;
+                    events.push_back(new MSJoinEvent(namedAnc->getTime(), p->getName(), namedAnc->getName()));
 
                     // Remove p
                     removeMe.push_back(i);
@@ -543,13 +545,13 @@ void Network::toms(void) {
                     double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
 
                     // Split
-                    cout << "-es " << p->getTime() << " " << p->getName() << " " << gamma << std::endl;
+                    events.push_back(new MSSplitEvent(p->getTime(), p->getName(), gamma));
 
                     // Join left
-                    cout << "-ej " << majAnc->getTime() << " " << p->getName() << " " << majAnc->getName() << std::endl;
+                    events.push_back(new MSJoinEvent(majAnc->getTime(), p->getName(), majAnc->getName()));
 
                     // Join right
-                    cout << "-ej " << minAnc->getTime() << " " << popnCounter++ << " " << minAnc->getName() << std::endl;
+                    events.push_back(new MSJoinEvent(minAnc->getTime(), popnCounter++, minAnc->getName()));
 
                     // Remove p
                     removeMe.push_back(i);
@@ -576,6 +578,8 @@ void Network::toms(void) {
             activeNodes.push_back(node);
         }
     }
+
+    return events;
 }
 
 bool Network::blankName(Node *p) {

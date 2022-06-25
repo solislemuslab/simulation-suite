@@ -1,4 +1,7 @@
 #include "Network.hpp"
+#include "MSEvents.hpp"
+#include <iostream>
+#include <algorithm>
 
 int main(int narg, char *argv[]) {
     // Read in network from Newick string
@@ -6,7 +9,16 @@ int main(int narg, char *argv[]) {
     Network myNetwork(myNewick);
 
     // Get the ms parameters
-    myNetwork.toms();
+    std::vector<MSEvent*> myEvents = myNetwork.toms();
+    std::sort(myEvents.begin(), myEvents.end(), [](MSEvent *a, MSEvent*b) {
+        return a->getTime() < b->getTime();
+    });
+
+    std::cout << "ms arguments corresponding to \"" << myNewick << "\", ordered by time:" << std::endl;
+    for(MSEvent *e : myEvents) {
+        std::cout << "\t";
+        e->print();
+    }
 
     return 0;
 }

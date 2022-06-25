@@ -5,6 +5,8 @@
 #ifndef Network_hpp
 #define Network_hpp
 
+#include "MSEvents.hpp"
+
 #include <vector>
 #include <set>
 #include <string>
@@ -18,7 +20,7 @@ class Network {
         std::string getNewickRepresentation(void);
         int totalNodes(void) { return nodes.size(); }
         Network(std::string newickStr);
-        void toms(void);
+        std::vector<MSEvent*> toms(void);
 
     protected:
         Network(void) { }
