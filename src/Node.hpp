@@ -14,7 +14,6 @@ class Node {
         Node*   getMinorAnc(void) { return minorAncestor; }
 
         int     getIndex(void) { return index; }
-        std::string getName(void) { return name; }
         void setLft(Node* p) { left = p; }
         void setRht(Node* p) { right = p; }
         
@@ -39,26 +38,32 @@ class Node {
         void setTime(double t) { time = t; }
         double getTime(void) { return time; }
 
+        void setJustSplit(bool b) { fromSplit = b; }
+        bool justSplit(void) { return fromSplit; }
+
         void setIndex(int x) { index = x; }
         void setName(std::string s) { name = s; }
         void setName(int i) { name = std::to_string(i); }
+        std::string getName(void) { return name; }
+        
         void printInfo(void);
         bool touched = false;
     
     protected:
         Node* left;
         Node* right;
-        Node* majorAncestor;
+        Node* majorAncestor;         // NOTE: Depending on input, majorAnc and minorAnc do NOT neccessarily correspond to the anc. the contributes >50% and <50% genes respectively
         Node* minorAncestor;
         int index;
         std::string name;
         double majorBranchLength;    // NOTE: BRANCH LENGTHS CORRESPOND TO **INCOMING** BRANCHES, NOT OUTGOING
         double minorBranchLength;
-        double time = -1;
-        double gammaLft = 0;
-        double gammaRht = 0;
+        double time;
+        double gammaLft = 0;         // NOTE: OUTGOING GAMMA, i.e. this is the percent of genes this node gives to its left child
+        double gammaRht = 0;         // same as with gammaLft
         double bootSupport = -1;
         double gamma = 0;
+        bool fromSplit;              // Used when reading network from ms events
 };
 
 #endif

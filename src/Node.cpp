@@ -7,31 +7,38 @@ Node::Node(void) {
     name = "";
     majorBranchLength = 0;
     minorBranchLength = 0;
+    gamma = gammaLft = gammaRht = 0;
+    bootSupport = -1;
     time = -1;
+    fromSplit = false;
 }
 
 void Node::printInfo(void) {
-    std::cout << "\tTime: " << time << std::endl;
+    if(time != -1)
+        std::cout << "\tTime: " << time << std::endl;
 
-    if(getLft() != NULL)
-        std::cout << "\tLeft: " << getLft()->getName();
-    if(gammaLft != 0)
-        std::cout << ", gamma=" << gammaLft << std::endl;
-    else
-        std::cout << std::endl;
+    if(getLft() != NULL) {
+        std::cout << "\tLeft: " << left->name;
+        if(gammaLft != 0)
+            std::cout << ", gamma=" << gammaLft << std::endl;
+        else
+            std::cout << std::endl;
+    }
 
 
-    if(getRht() != NULL)
-        std::cout << "\tRight: " << getRht()->getName();
-    if(gammaRht != 0)
-        std::cout << ", gamma=" << gammaRht << std::endl;
-    else
-        std::cout << std::endl;
+    if(getRht() != NULL) {
+        std::cout << "\tRight: " << right->name;
+        if(gammaRht != 0)
+            std::cout << ", gamma=" << gammaRht << std::endl;
+        else
+            std::cout << std::endl;
+    }
         
     if(getMajorAnc() != NULL)
-        std::cout << "\tMajor anc: " << getMajorAnc()->getName() << std::endl;
+        std::cout << "\tMajor anc: " << majorAncestor->name << std::endl;
     if(getMinorAnc() != NULL)
-        std::cout << "\tMinor anc: " << getMinorAnc()->getName() << std::endl;
+        std::cout << "\tMinor anc: " << minorAncestor->name << std::endl;
     
-    std::cout << "\tBoot supp: " << bootSupport << std::endl;
+    if(bootSupport != -1)
+        std::cout << "\tBoot supp: " << bootSupport << std::endl;
 }

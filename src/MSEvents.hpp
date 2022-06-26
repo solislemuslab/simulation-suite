@@ -8,16 +8,15 @@ enum MSEventType { split, join };
 
 class MSEvent {
     public:
-        MSEventType getEventType(void) { return eventType; }
+        virtual MSEventType getEventType(void) = 0;
         
         double getTime(void) { return time; }
         void setTime(double t) { time = t; }
 
-        virtual std::string toString(void) { }
-        void print(void) { std::cout << toString() << std::endl; }
+        // virtual std::string toString(void) = 0;
+        // virtual void print(void) = 0;
         
     protected:
-        MSEventType eventType;
         double time;
 };
 
@@ -45,12 +44,14 @@ class MSJoinEvent:public MSEvent {
         int getMinorTaxa(void) { return minorTaxa; }
         void setMinorTaxa(int m) { minorTaxa = m; }
 
+        MSEventType getEventType(void) { return join; }
+
         std::string toString(void) { return "-ej " + std::to_string(time) + " " + std::to_string(minorTaxa) + " " + std::to_string(majorTaxa); }
+        void print(void) { std::cout << toString() << std::endl; }
 
     protected:
         int majorTaxa;
         int minorTaxa;
-        MSEventType eventType = join;
 };
 
 class MSSplitEvent:public MSEvent {
@@ -72,12 +73,14 @@ class MSSplitEvent:public MSEvent {
         double getGamma(void) { return gamma; }
         void setGamma(double g) { gamma = g; }
 
+        MSEventType getEventType(void) { return split; }
+
         std::string toString(void) { return "-es " + std::to_string(time) + " " + std::to_string(taxa) + " " + std::to_string(gamma); }
+        void print(void) { std::cout << toString() << std::endl; }
 
     protected:
         int taxa;
         double gamma;
-        MSEventType eventType = split;
 };
 
 #endif

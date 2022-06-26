@@ -13,6 +13,361 @@
 using namespace std;
 std::string BLANK_NAME = "__$!&*#%*__";
 
+// IDEA: When building the network from MSEvents:
+//    1. build the network NOT accounting for the fact that we will have additional nodes
+//    2. after the network is built, just do a traversal of the network and anytime we find
+//       a node that has exactly 1 ancestor and exactly 1 child: remove it.
+
+Network::Network(std::vector<MSEvent*> events) {
+    // First, order the events backwards in time (from tips to root) so that they
+    // can be read in order.
+    sort(events.begin(), events.end(), [](MSEvent *a, MSEvent *b) {
+        return a->getTime() < b->getTime();
+    });
+
+    // Start by figuring out how many leaves we have. This is equal to the largest number
+    // in the MSEvent's minus the total number of MSSplitEvent's
+    int max = 0;
+    int splits = 0;
+    cout << "join: " << join << ", split: " << split << std::endl;
+    for(MSEvent *e : events) {
+        cout << e->getEventType() << std::endl;
+        // Add a split. Splits necessarily create a new, larger number, so we don't need to
+        // check these events for a maximum number
+        if(e->getEventType() == split)
+            splits++;
+        else {
+            max = std::max(std::max(max, ((MSJoinEvent*)e)->getMajorTaxa()), ((MSJoinEvent*)e)->getMinorTaxa());
+        }
+    }
+    int ntaxa = max - splits;
+    cout << "ntaxa = " << max << "-" << splits << " = " << (max-splits) << std::endl;
+
+    // activeNodes includes the most recent version of any given taxa. I.e. after a split event where taxa
+    // 3 is turned into taxa 3 & taxa 7, the old node for taxa 3 will be removed, and both the new nodes added.
+    // Also, if taxa 3 & taxa 4 are joined with command -ej <t> 3 4 (i.e. deleting taxa 3), the destroyed node
+    // for taxa 3 will remain in activeNodes, but the old version of taxa 4 will be removed and the new one added.
+    //
+    // We have to do things in this way because otherwise we run into issues when a node is both itself a hybrid
+    // and apart of a hybridization event.
+    std::vector<Node*> activeNodes;
+    
+    // These are the intermediate nodes that we are required to create when split events occurred, but that we
+    // ultimately don't want to leave left over in the network. They are removed from nodes at the end of this section
+    std::vector<Node*> globalRemoveMe;
+
+    // Populate the nodes list with the leaves
+    for(int i=1; i<=ntaxa; i++) {
+        Node *p = new Node();
+        p->setName(i);
+        p->setTime(0);
+        nodes.push_back(p);
+        activeNodes.push_back(p);
+    }
+    
+    // Now, just process each event, and build the network backwards in time
+    for(unsigned int i=0; i < events.size(); i++) {
+        // This line for debugging
+        std::cout << "activeNodes: {";
+        for(Node *n : activeNodes)
+            std::cout << n->getName() << ", ";
+        std::cout << "}" << std::endl;
+        //
+
+        cout << "i=" << i << std::endl;
+        // Because we are doing things in chronological order, the time that a join event occurs should be
+        // greater than or equal to the times of *each* of the nodes involved in the event. So, all we have
+        // to do is create a parent pointing to each of the nodes involved.
+        if(events[i]->getEventType() == join) {
+            std::cout << "JOIN" << std::endl;
+            MSJoinEvent *e = (MSJoinEvent*)events[i];
+
+            // Both taxa involved in the join event should already exist
+            Node *fromTaxa = NULL;
+            Node *toTaxa = NULL;
+            int fromIdx;  // used for removing the node from activeNodes
+
+            std::cout << "Looking for nodes with names \"" << std::to_string(e->getMajorTaxa()) << "\" and \"" << e->getMinorTaxa() << "\"..." << std::endl;
+            for(unsigned int i=0; i<activeNodes.size(); i++) {
+                if(fromTaxa == NULL && activeNodes[i]->getName().compare(std::to_string(e->getMajorTaxa())) == 0) {
+                    fromTaxa = activeNodes[i];
+                    fromIdx = i;
+                } else if(toTaxa == NULL && activeNodes[i]->getName().compare(std::to_string(e->getMinorTaxa()))) {
+                    toTaxa = activeNodes[i];
+                }
+
+                if(fromTaxa != NULL && toTaxa != NULL)
+                    break;
+            }
+
+            // If we couldn't find one or both of the taxa involved, this is an error; quit
+            if(fromTaxa == NULL || toTaxa == NULL) {
+                std::cout << "ERROR: When finding both taxa in a join event, one or both taxa could not be found; quitting." << std::endl;
+                exit(-1);
+            }
+
+            // Create a new parent node pointing back to both of these nodes
+            Node *p = new Node();
+            p->setTime(e->getTime());
+            p->setName(fromTaxa->getName());
+
+            // If either fromTaxa or toTaxa (or both) is (are) the product of splits, then we want to get rid of them right now
+            // and form connections from p to the correct, corresponding children of this (these) node(s)
+            //
+            // What we need to do to transfer the information contained in each intermediate node:
+            //    1. copy over the gamma value (stored in the intermediate node inside node->getGamma())
+            //    2. re-route the ancestors of the intermediate node's child (should only ever be 1 child)
+            if(fromTaxa->justSplit()) {
+                // 1. copy over the gamma value
+                // (we always set fromTaxa as the left child)
+                p->setGammaLft(fromTaxa->getGamma());
+
+                // 2. re-route the ancestors of the intermediate node's child (should only ever have 1 child)
+                Node *child = fromTaxa->getLft();
+                if(child == NULL || fromTaxa->getRht() != NULL) {
+                    // A node which is the product of a split should only ever have 1 child, and that child should always be left
+                    std::cout << "ERROR: A node which is the product of a split had either 2 children, or the left child was NULL; quitting." << std::endl;
+                    exit(-1);
+                }
+                
+                // We don't know which ancestor we are, so we have to figure that out before creating ancestor connections
+                if(child->getMajorAnc() == fromTaxa) {
+                    child->setMajorAnc(p);
+                    child->setMajorBranchLength(p->getTime() - child->getTime());
+                } else {
+                    child->setMinorAnc(p);
+                    child->setMinorBranchLength(p->getTime() - child->getTime());
+                }
+
+                globalRemoveMe.push_back(fromTaxa);
+            } else {
+                // If the node is not the product of a split, then creating ancestor connections is more straightforward.
+                //
+                // Make the children point to their new parent and
+                // Set the branch lengths. Remember, branch lengths are INCOMING, not outgoing.
+                fromTaxa->setMajorAnc(p);
+                fromTaxa->setMajorBranchLength(p->getTime() - fromTaxa->getTime());
+            }
+            if(toTaxa->justSplit()) {
+                // 1. copy over the gamma values
+                // (we always set toTaxa as the right child)
+                p->setGammaRht(toTaxa->getGamma());
+
+                // 2. re-route the ancestors of the intermediate node's child (should only ever have 1 child)
+                Node *child = toTaxa->getLft();
+                if(child == NULL || toTaxa->getRht() != NULL) {
+                    // A node which is the product of a split should only ever have 1 child, and that child should always be left
+                    std::cout << "ERROR: A node which is the product of a split had either 2 children, or the left child was NULL; quitting." << std::endl;
+                    exit(-1);
+                }
+
+                // We don't know which ancestor we are, so we have to figure that out before creating ancestor connections
+                if(child->getMajorAnc() == toTaxa) {
+                    child->setMajorAnc(p);
+                    child->setMajorBranchLength(p->getTime() - child->getTime());
+                } else {
+                    child->setMinorAnc(p);
+                    child->setMinorBranchLength(p->getTime() - child->getTime());
+                }
+
+                globalRemoveMe.push_back(toTaxa);
+            } else {
+                // If the node is not the product of a split, then creating ancestor connections is more straightforward.
+                //
+                // Make the children point to their new parent and
+                // Set the branch lengths. Remember, branch lengths are INCOMING, not outgoing.
+                toTaxa->setMajorAnc(p);
+                toTaxa->setMajorBranchLength(p->getTime() - toTaxa->getTime());
+            }
+
+            // Now fromTaxa and toTaxa are the nodes that we actually want to connect to, so we create the connections
+            // There shouldn't be an issue always setting fromTaxa as left and toTaxa as right...I believe.
+            p->setLft(fromTaxa);
+            p->setRht(toTaxa);
+
+            // Remove fromTaxa from activeNodes
+            activeNodes.erase(std::next(activeNodes.begin(), fromIdx));
+
+            // Add p to activeNodes AND nodes
+            activeNodes.push_back(p);
+            nodes.push_back(p);
+        } else if(events[i]->getEventType() == split) {
+            std::cout << "SPLIT" << std::endl;
+            MSSplitEvent *e = (MSSplitEvent*)events[i];
+            // Split events are straightforward, but require the use of an intermediate node that will be removed later.
+            // This is because ms's protocol creates a new node everytime a split occurs, we essentially end up with a
+            // duplicate node in our network. There are many ways that this could potentially be dealt with, but this is
+            // how we choose to deal with it.
+            Node *p = NULL;
+            int pIdx;
+
+            std::cout << "Looking for node with name \"" << std::to_string(e->getTaxa()) << "\"..." << std::endl;
+            for(unsigned int i=0; i<activeNodes.size(); i++) {
+                if(activeNodes[i]->getName().compare(std::to_string(e->getTaxa())) == 0) {
+                    p = activeNodes[i];
+                    pIdx = i;
+                    break;
+                }
+            }
+            
+            // If p is still NULL, this is an error; quit
+            if(p == NULL) {
+                std::cout << "ERROR: Node involved in split event not found when split event was reached; quitting." << std::endl;
+                exit(-1);
+            }
+
+            // If p is a leaf then we actually need to create a new node
+            // getLft will equal getRht exactly when both are NULL.
+            if(p->getLft() == p->getRht()) {
+                Node *newNode = new Node();
+                newNode->setName(p->getName());
+                newNode->setTime(e->getTime());
+                newNode->setLft(p);
+                p->setMajorAnc(newNode);
+                p->setMajorBranchLength(newNode->getTime());  // p->getTime() is 0
+                nodes.push_back(newNode);
+
+                // Remove the leaf from activeNodes
+                std::cout << "pIdx: " << pIdx << std::endl;
+                activeNodes.erase(std::next(activeNodes.begin(), pIdx));
+
+                // Now newNode is the node we want to operate on
+                p = newNode;
+                activeNodes.push_back(p);
+                pIdx = activeNodes.size() - 1;
+            } else {
+                // This event corresponds to Node p splitting, so this event gives us p's time
+                p->setTime(e->getTime());
+            }
+
+            // p might have just come from a split. In this case, its children do not have branch lengths yet.
+            if(p->justSplit()) {
+                // Hybrid ancestors only ever have 1 child, and we set the child to be the left child,
+                // so that's the only node we need to check. (We shouldn't actually even have to check it,
+                // it should always be there)
+                if(p->getLft() != NULL) {
+                    if(p == p->getLft()->getMajorAnc())
+                        // p is the majorAnc of its left child
+                        p->getLft()->setMajorBranchLength(p->getTime() - p->getLft()->getTime());
+                    else
+                        // p is the minorAnc of its left child
+                        p->getLft()->setMinorBranchLength(p->getTime() - p->getLft()->getTime());
+                } else {
+                    std::cout << "ERROR: p should have a left child here. Unsure what is going on; quitting." << std::endl;
+                    exit(-1);
+                }
+            }
+
+            // Create both of the new nodes and mark them as having just come from a split
+            // NOTE: We do NOT know the times on EITHER the major or the minor hybrid nodes. We WILL know
+            //       those times once either: 1) they split (the split event gives us their time), or
+            //       2) they are joined with something else. In this case, the nodes we make here are
+            //       only placeholders and will just be removed anyways, so they don't need a time.
+            Node *maj = new Node();
+            maj->setName(p->getName());
+            maj->setLft(p);
+            maj->setGamma(e->getGamma());
+            maj->setJustSplit(true);
+
+            Node *min = new Node();
+            min->setName((ntaxa++)+1);
+            min->setLft(p);
+            min->setGamma(1-e->getGamma());
+            min->setJustSplit(true);
+
+            // Link p to its ancestors
+            p->setMajorAnc(maj);
+            p->setMinorAnc(min);
+
+            // We do not know the times on either ancestor, so we cannot set p's branch length yet!
+            // Remove p from activeNodes
+            activeNodes.erase(std::next(activeNodes.begin(), pIdx));
+            
+            // Add min and maj to activeNodes
+            activeNodes.push_back(min);
+            activeNodes.push_back(maj);
+
+            // Add min and maj to nodes
+            nodes.push_back(min);
+            nodes.push_back(maj);
+        } else {
+            std::cout << "ERROR: MSEvent is neither a split or join event; quitting." << std::endl;
+            exit(-1);
+        }
+    }
+
+    ////////
+    std::cout << "\tnodes[5] info.\n\t\tnodes[5]->justSplit(): " << nodes[5]->justSplit() << "\n\t\tnodes[5]->getGamma(): " << nodes[5]->getGamma() << std::endl;
+    ////////
+
+    // Now we are going to remove the placeholder nodes that we had to add for split events
+    // We remove by index, so first we have to find the indices of all the nodes
+    std::vector<int> removeIdcs;
+    for(unsigned int i=0; i < nodes.size(); i++) {
+        for(unsigned int j=0; j < globalRemoveMe.size(); j++) {
+            if(nodes[i] == globalRemoveMe[j]) {
+                // Add the idx to our list
+                removeIdcs.push_back(i);
+
+                // Remove the node from our search space
+                globalRemoveMe.erase(std::next(globalRemoveMe.begin(), j));
+
+                // Break out of the loop that is looking for this node
+                break;
+            }
+        }
+    }
+
+    ////////
+    for(int idx : removeIdcs)
+        std::cout << "\t" << idx << ", ";
+    std::cout << std::endl;
+    ////////
+
+    // Sort the list of indices in descending order so that we can removing them without any issues
+    std::sort(removeIdcs.begin(), removeIdcs.end(),
+        [](int a, int b) {
+            return(a > b);
+        }
+    );
+
+    // This line for debugging
+    std::cout << "nodes: {";
+    for(Node *n : nodes)
+        std::cout << n->getName() << ", ";
+    std::cout << "}" << std::endl;
+    //
+
+    nodes[5]->printInfo();
+
+    // Now, just loop through and remove the nodes
+    for(int idx : removeIdcs) {
+        nodes.erase(std::next(nodes.begin(), idx));
+    }
+
+    // This line for debugging
+    std::cout << "nodes: {";
+    for(Node *n : nodes)
+        std::cout << n->getName() << ", ";
+    std::cout << "}" << std::endl;
+    //
+
+    // All of the nodes in the network have indistinguishable names right now, so let's fix that
+    postmsParseNetworkRename();
+}
+
+void Network::postmsParseNetworkRename(void) {
+    // Internal nodes are given lower case letter names: a, b, c, ..., z, za, zb, ..., zz, ..., zzz, ...
+    // Leaves are given natural number names: 1, 2, 3, ...
+
+    // First: find root.
+    Node *root = nodes[0];
+    while(root->getMajorAnc() != NULL)
+        root = root->getMajorAnc();
+
+
+}
+
 Network::Network(std::string newickStr) {
     hybrids = 0;
     std::vector<std::string> tokens = parseNewick(newickStr);
@@ -23,7 +378,7 @@ Network::Network(std::string newickStr) {
     bool readingGamma = false;
     bool namingInternalNode = false;
     Node* p = NULL;
-    for (int i=0; i<tokens.size(); i++) {
+    for(unsigned int i=0; i<tokens.size(); i++) {
         std::string token = tokens[i];
         //std::cout << token << std::endl;
         if (token == "(") {
@@ -143,12 +498,12 @@ Network::Network(std::string newickStr) {
 
     // index the nodes
     int ndeIdx = 0;
-    for (int i=0; i<nodes.size(); i++) {
+    for(unsigned int i=0; i<nodes.size(); i++) {
         if (nodes[i]->getLft() == NULL)
             nodes[i]->setIndex(ndeIdx++);
     }
     
-    for (int i=0; i<nodes.size(); i++) {
+    for(unsigned int i=0; i<nodes.size(); i++) {
         if (nodes[i]->getLft() != NULL)
             nodes[i]->setIndex(ndeIdx++);
     }
@@ -170,7 +525,7 @@ void Network::setTimes(void) {
     // This is also how ms expects times to be, which is the main reason this is being
     // implemented, so yay!
     std::vector<Node*> leaves;
-    for(int i = 0; i < nodes.size(); i++) {
+    for(unsigned int i = 0; i < nodes.size(); i++) {
         if(nodes[i] == NULL)
             continue;
         
@@ -238,7 +593,7 @@ void Network::setTimeRecur(Node *p) {
 
 std::vector<std::string> Network::parseNewick(std::string ns) {
     std::vector<std::string> tks;
-    for(int i = 0; i < ns.size(); i++) {
+    for(unsigned int i = 0; i < ns.size(); i++) {
         char c = ns[i];
         if(c == '(' || c == ')' || c == ',' || c == ':' || c == ';') {
             std::string tempStr;
@@ -259,7 +614,7 @@ std::vector<std::string> Network::parseNewick(std::string ns) {
 
     #if defined(DEBUG_NEWICK_PARSER)
     std::cout << "The Newick string, broken into parts: " << std::endl;
-    for(int i = 0; i < tks.size(); i++) {
+    for(unsigned int i = 0; i < tks.size(); i++) {
         std::cout << " tks[" << i << "] = \"" << tks[i] << "\"" << std::endl;
     }
     #endif
@@ -274,7 +629,7 @@ void Network::patchNetwork() {
     std::vector<int> removeMe;
 
     int count = 0;
-    for(int i = 0; i < nodes.size(); i++) {
+    for(unsigned int i = 0; i < nodes.size(); i++) {
         Node *p = nodes[i];
         // Check if this node is a hybrid
         if(isHybridName(p->getName())) {
@@ -368,7 +723,7 @@ void Network::patchNetwork() {
 
 int Network::hybridNameIndex(std::string val, std::vector<std::string> list) {
     // list has length <hybrids>
-    for(int i = 0; i < list.size(); i++) {
+    for(unsigned int i = 0; i < list.size(); i++) {
         if(val.compare(list[i]) == 0)
             return i;
     }
@@ -424,14 +779,14 @@ void Network::writeNetwork(Node* p, std::stringstream& ss) {
 }
 
 Network::~Network(void) {
-    printf("Calling the Network destructor with %lu nodes.\n", nodes.size());
-    for(int i = 0; i < nodes.size(); i++)
+    cout << "Calling the Network destructor with " << nodes.size() << " nodes.\n";
+    for(unsigned int i = 0; i < nodes.size(); i++)
         delete nodes[i];
 }
 
 void Network::listNodes(void) {
-    for(int i = 0; i < nodes.size(); i++) {
-        std::cout << "Node " << i << ": " << nodes[i]->getName() << std::endl << std::flush;
+    for(unsigned int i = 0; i < nodes.size(); i++) {
+        std::cout << "Node " << i << ": " << std::endl << std::flush;
         nodes[i]->printInfo();
     }
     cout << "Hybrids: " << hybrids << std::endl;
@@ -442,7 +797,7 @@ std::vector<MSEvent*> Network::toms(void) {
     // First, gather & name all leaves while setting the names of non-leaves to null
     std::vector<Node*> activeNodes;
     int popnCounter = 1;
-    for(int i = 0; i < nodes.size(); i++) {
+    for(unsigned int i = 0; i < nodes.size(); i++) {
         if(nodes[i] != NULL) {
             if(nodes[i]->getLft() == NULL && nodes[i]->getRht() == NULL) {
                 activeNodes.push_back(nodes[i]);
@@ -468,7 +823,7 @@ std::vector<MSEvent*> Network::toms(void) {
         // Run a for loop that tries to resolve every node in activeNodes
         std::vector<int> removeMe;
         std::vector<Node*> addMe;
-        int i;
+        unsigned int i;
         for(i = 0; i < activeNodes.size(); i++) {
             Node *p = activeNodes[i];
             if(p == NULL) {
@@ -587,7 +942,7 @@ bool Network::blankName(Node *p) {
 }
 
 int Network::activeNodesIdx(Node *p, std::vector<Node*> list) {
-    for(int i = 0; i < list.size(); i++) {
+    for(unsigned int i = 0; i < list.size(); i++) {
         if(list[i] == p)
             return i;
     }

@@ -20,6 +20,7 @@ class Network {
         std::string getNewickRepresentation(void);
         int totalNodes(void) { return nodes.size(); }
         Network(std::string newickStr);
+        Network(std::vector<MSEvent*> events);
         std::vector<MSEvent*> toms(void);
 
     protected:
@@ -41,6 +42,7 @@ class Network {
         void setTimes(void);
         void setTimeRecur(Node *p);
         double totalTime;
+        void postmsParseNetworkRename(void);
 };
 
 #endif
