@@ -28,7 +28,6 @@ class Network {
         Node* root;
         std::vector<Node*> nodes;
         void writeNetwork(Node *p, std::stringstream& ss);
-        int hybrids;
         bool isHybridName(std::string);
         int hybridNameIndex(std::string val, std::vector<std::string> list);
         int activeNodesIdx(Node *p, std::vector<Node*>);
@@ -42,7 +41,10 @@ class Network {
         void setTimes(void);
         void setTimeRecur(Node *p);
         double totalTime;
-        void postmsParseNetworkRename(void);
+        void postmsPatchAndRename(void);
+        std::string getInternalName(int);
+        std::string getLeafName(int);
+        int postmsPatchAndRenameRecur(Node*, int);
 };
 
 #endif

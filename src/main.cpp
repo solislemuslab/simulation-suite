@@ -14,11 +14,12 @@ int main(int narg, char *argv[]) {
         return a->getTime() < b->getTime();
     });
 
-    // std::cout << "ms arguments corresponding to \"" << myNewick << "\", ordered by time:" << std::endl;
-    // for(MSEvent *e : myEvents) {
-    //     std::cout << "\t";
-    //     e->print();
-    // }
+    std::cout << "ms arguments corresponding to \"" << myNewick << "\", ordered by time:" << std::endl;
+    for(MSEvent *e : myEvents) {
+        std::cout << "\t";
+        
+        (e->getEventType() == join) ? ((MSJoinEvent*)e)->print() : ((MSSplitEvent*)e)->print();
+    }
 
     std::cout << std::endl << std::endl << "Now, let's use those MSEvent's to generate a new (identical) network." << std::endl;
     Network msNetwork(myEvents);

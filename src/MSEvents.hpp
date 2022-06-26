@@ -12,9 +12,6 @@ class MSEvent {
         
         double getTime(void) { return time; }
         void setTime(double t) { time = t; }
-
-        // virtual std::string toString(void) = 0;
-        // virtual void print(void) = 0;
         
     protected:
         double time;

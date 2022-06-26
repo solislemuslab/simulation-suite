@@ -38,9 +38,6 @@ class Node {
         void setTime(double t) { time = t; }
         double getTime(void) { return time; }
 
-        void setJustSplit(bool b) { fromSplit = b; }
-        bool justSplit(void) { return fromSplit; }
-
         void setIndex(int x) { index = x; }
         void setName(std::string s) { name = s; }
         void setName(int i) { name = std::to_string(i); }
@@ -63,7 +60,6 @@ class Node {
         double gammaRht = 0;         // same as with gammaLft
         double bootSupport = -1;
         double gamma = 0;
-        bool fromSplit;              // Used when reading network from ms events
 };
 
 #endif

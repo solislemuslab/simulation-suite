@@ -10,7 +10,6 @@ Node::Node(void) {
     gamma = gammaLft = gammaRht = 0;
     bootSupport = -1;
     time = -1;
-    fromSplit = false;
 }
 
 void Node::printInfo(void) {
@@ -18,7 +17,7 @@ void Node::printInfo(void) {
         std::cout << "\tTime: " << time << std::endl;
 
     if(getLft() != NULL) {
-        std::cout << "\tLeft: " << left->name;
+        std::cout << "\tLeft: " << left->name << " (" << left << ")";
         if(gammaLft != 0)
             std::cout << ", gamma=" << gammaLft << std::endl;
         else
@@ -27,7 +26,7 @@ void Node::printInfo(void) {
 
 
     if(getRht() != NULL) {
-        std::cout << "\tRight: " << right->name;
+        std::cout << "\tRight: " << right->name << " (" << right << ")";
         if(gammaRht != 0)
             std::cout << ", gamma=" << gammaRht << std::endl;
         else
