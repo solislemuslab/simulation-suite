@@ -45,6 +45,8 @@ class Node {
         
         void printInfo(void);
         bool touched = false;
+
+        std::string getNewickFormattedName(bool, double);
     
     protected:
         Node* left;

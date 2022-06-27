@@ -1,5 +1,7 @@
 #include "Node.hpp"
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 Node::Node(void) {
     left = right = majorAncestor = minorAncestor = NULL;
@@ -10,6 +12,16 @@ Node::Node(void) {
     gamma = gammaLft = gammaRht = 0;
     bootSupport = -1;
     time = -1;
+}
+
+std::string Node::getNewickFormattedName(bool fromMinorEdge, double gamma) {
+    std::stringstream ss;
+    ss << name << ":" << (fromMinorEdge ? minorBranchLength : majorBranchLength) << 
+                  ":" << (bootSupport != -1 ? std::to_string(bootSupport) : "") <<
+                  ":" << (gamma != -1 ? std::to_string(gamma) : "");
+    return ss.str();
+
+    // p->getName() << ":" << std::fixed << std::setprecision(5) << (minorHybrid ? p->getMinorBranchLength() : p->getMajorBranchLength());
 }
 
 void Node::printInfo(void) {

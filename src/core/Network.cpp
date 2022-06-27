@@ -13,10 +13,10 @@
 using namespace std;
 std::string BLANK_NAME = "__$!&*#%*__";
 
-// IDEA: When building the network from MSEvents:
-//    1. build the network NOT accounting for the fact that we will have additional nodes
-//    2. after the network is built, just do a traversal of the network and anytime we find
-//       a node that has exactly 1 ancestor and exactly 1 child: remove it.
+
+bool isomorphic(Network net1, Network net2) {
+    return false;
+}
 
 void Network::buildFromMS(std::vector<MSEvent*> events) {
     // First, order the events backwards in time (from tips to root) so that they
@@ -217,6 +217,7 @@ void Network::postmsPatchAndRename(void) {
     std::vector<int> removeMe;
     int leafCount = 0;
     int internalNodeCount = 0;
+    int hybridCount = 1;
     for(unsigned int i=0; i < nodes.size(); i++) {
         // Check if the node is redundant
         if(nodes[i]->getTime() == -1) {
@@ -257,10 +258,16 @@ void Network::postmsPatchAndRename(void) {
             // Give this node a new name! Different naming rules for internal and external nodes,
             // so we have to figure out which one this is first
             if(nodes[i]->getLft() == nodes[i]->getRht()) {
-                // This is a leaf
+                // This is a leaf; these are never hybrids
                 nodes[i]->setName(getLeafName(leafCount++));
             } else {
-                nodes[i]->setName(getInternalName(internalNodeCount++));
+                // This is an internal node; we have to check whether it is a hybrid
+                if(nodes[i]->getMinorAnc() != NULL)
+                    // hybrid node
+                    nodes[i]->setName(getInternalName(internalNodeCount++));
+                else
+                    // not a hybrid node
+                    nodes[i]->setName(getInternalName(internalNodeCount++) + "#" + std::to_string(hybridCount++));
             }
         }
     }
@@ -755,35 +762,35 @@ std::string Network::getNewickRepresentation(void) {
     std::stringstream ss;
     
     if (root->getLft() != NULL && root->getRht() != NULL)
-        writeNetwork(root, ss);
+        writeNetwork(root, ss, false);
     else
-        writeNetwork(root->getLft(), ss);
+        writeNetwork(root->getLft(), ss, false);
+    ss << ";";
     
     std::string newick = ss.str();
     return newick;
 }
 
-void Network::writeNetwork(Node* p, std::stringstream& ss) {
+void Network::writeNetwork(Node* p, std::stringstream& ss, bool minorHybrid) {
+    // Different rules apply when dealing with hybrids, but we still want to traverse them normally once.
+    // The variable `minorHybrid` allows us to traverse a hybrid node twice, differently both times.
     if (p != NULL) {
-        if (p->getLft() == NULL) {
-            // Use this line if you do not want to include branch lengths
-            ss << p->getName();
-            // Use this line if you want to include branch lengths
-            // ss << p->getName() << ":" << std::fixed << std::setprecision(5) << p->getBranchLength();
+        if (p->getLft() == NULL || minorHybrid) {
+            ss << p->getNewickFormattedName(minorHybrid, (minorHybrid ? (p == p->getMinorAnc()->getLft() ? p->getMinorAnc()->getGammaLft() : p->getMinorAnc()->getGammaRht()) : -1));
+            // p->getName() << ":" << std::fixed << std::setprecision(5) << (minorHybrid ? p->getMinorBranchLength() : p->getMajorBranchLength());
+            
         } else {
             ss << "(";
-            writeNetwork (p->getLft(), ss);
+            writeNetwork (p->getLft(), ss, p->getGammaLft() != 0 && p->getLft()->getMinorAnc() == p);
             if(p->getRht() != NULL) {
                 ss << ",";
-                writeNetwork (p->getRht(), ss);
+                writeNetwork (p->getRht(), ss, p->getGammaRht() != 0 && p->getRht()->getMinorAnc() == p);
             }
             if (p->getMajorAnc() == NULL)
-                ss << ")";
+                // Root only have a name; not branch lengths or boot support or gamma
+                ss << ")" << p->getName();
             else
-                // Use this line if you do not want to include branch lengths
-                ss << ")";
-                // Use this line if you want to include branch lengths
-                // ss << "):" << std::fixed << std::setprecision(5) << p->getBranchLength();
+                ss << ")" << p->getNewickFormattedName(minorHybrid, p->getMinorAnc() == NULL ? -1 : (p->getMajorAnc()->getLft() == p ? p->getMajorAnc()->getGammaLft() : p->getMajorAnc()->getGammaRht()));
         }
     }
 }

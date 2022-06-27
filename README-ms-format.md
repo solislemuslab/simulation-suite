@@ -1,6 +1,6 @@
 ### Read a network in with Newick format
 
-This is in the `main.cpp` file right now, so `main.cpp` should just be adjusted for now to test different Newick strings:
+This is in the `main.cpp` file right now, so `main.cpp` should just be adjusted for now to test different Newick strings (do not commit your local changes):
 
 ```cpp
 #include "SimSuite.hpp"

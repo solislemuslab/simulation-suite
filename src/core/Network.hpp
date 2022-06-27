@@ -27,7 +27,7 @@ class Network {
         Network(void) { }
         Node* root;
         std::vector<Node*> nodes;
-        void writeNetwork(Node *p, std::stringstream& ss);
+        void writeNetwork(Node *p, std::stringstream& ss, bool);
         bool isHybridName(std::string);
         int hybridNameIndex(std::string val, std::vector<std::string> list);
         int activeNodesIdx(Node *p, std::vector<Node*>);
@@ -50,5 +50,7 @@ class Network {
         int postmsPatchAndRenameRecur(Node*, int);
         std::vector<MSEvent*> toms(void);
 };
+
+bool isomorphic(Network, Network);
 
 #endif
