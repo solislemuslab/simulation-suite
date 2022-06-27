@@ -387,6 +387,15 @@ std::string Network::getLeafName(int i) {
     return name;
 }
 
+int Network::getTotalExtantTaxa(void) {
+    int count = 0;
+    for(Node *p : nodes) {
+        if(p->getLft() == p->getRht())
+            count++;
+    }
+    return count;
+}
+
 Network::Network(std::string str, std::string strFormat) {
     if(strFormat.compare("newick") == 0)
         buildFromNewick(str);
@@ -490,8 +499,11 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
 
 std::string Network::getMSString(void) {
     std::vector<MSEvent*> events = toms();
-    std::string str = std::string("");
-    
+    int ntaxa = getTotalExtantTaxa();
+    std::string str = std::string("ms " + std::to_string(ntaxa) + " ${nrep} -I " + std::to_string(ntaxa) + " ");
+    for(int i=0; i < ntaxa; i++)
+        str += "1 ";
+
     for(MSEvent* e : events) {
         str += ((e->getEventType() == join) ? ((MSJoinEvent*)e)->toString() : ((MSSplitEvent*)e)->toString()) + " ";
     }

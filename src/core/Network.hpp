@@ -36,6 +36,7 @@ class Network {
         void easyDbg(void) { }
         int getLength(std::string);
         bool blankName(Node *p);
+        int getTotalExtantTaxa(void);
 
     private:
         void buildFromNewick(std::string newickStr);
