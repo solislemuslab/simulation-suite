@@ -18,7 +18,7 @@ std::string BLANK_NAME = "__$!&*#%*__";
 //    2. after the network is built, just do a traversal of the network and anytime we find
 //       a node that has exactly 1 ancestor and exactly 1 child: remove it.
 
-Network::Network(std::vector<MSEvent*> events) {
+void Network::buildFromMS(std::vector<MSEvent*> events) {
     // First, order the events backwards in time (from tips to root) so that they
     // can be read in order.
     sort(events.begin(), events.end(), [](MSEvent *a, MSEvent *b) {
@@ -323,7 +323,128 @@ std::string Network::getLeafName(int i) {
     return name;
 }
 
-Network::Network(std::string newickStr) {
+Network::Network(std::string str, std::string strFormat) {
+    if(strFormat.compare("newick") == 0)
+        buildFromNewick(str);
+    else if(strFormat.compare("ms") == 0) {
+        std::vector<MSEvent*> events = parseMSEvents(str);
+        buildFromMS(events);
+    }
+}
+
+// Expected string right now is anything of the form: "-ej <t> <i> <j> -es <t> <i> <gamma> ..."
+std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
+    std::vector<MSEvent*> events;
+    std::vector<std::string> tks;
+
+    // First, we are going to parse the input string into commands
+    int spaceCount = 0;
+    int last_idx = -1;
+    for(unsigned int i=0; i <= str.length(); i++) {
+        if(str[i] == ' ' || str[i] == '\0') {
+            spaceCount++;
+            if(spaceCount == 4) {
+                // This is the end of a single command; push the token
+                tks.push_back(str.substr(last_idx+1, i-last_idx-1));
+                spaceCount = 0;
+                last_idx = i;
+            }
+        }
+    }
+
+    // When we get out of the for loop, spaceCount should be exactly 0. Throw an error if this is not the case
+    if(spaceCount != 0) {
+        std::cout << "ERROR: Input ms command seqeuence was not in expected format; quitting." << std::endl;
+        exit(-1);
+    }
+
+    // Parse the events
+    for(unsigned int i=0; i < tks.size(); i++) {
+        std::string tk = tks[i];
+        std::cout << "tks[" << i << "]: \"" << tks[i] << "\"" << std::endl;
+
+        if(tk[2] == 'j') {
+            // Join event
+            // parse the time
+            int startIdx = 4;
+            int length = 1;
+            while(tk[startIdx + length] != ' ')
+                length++;
+            std::cout << "stod(" << tk.substr(startIdx, length) << ");" << std::endl;
+            double time = stod(tk.substr(startIdx, length));
+
+            // parse the minor taxa
+            startIdx += length+1;
+            length = 1;
+            while(tk[startIdx + length] != ' ')
+                length++;
+            std::cout << "stoi(" << tk.substr(startIdx, length) << ");" << std::endl;
+            int minorTaxa = stoi(tk.substr(startIdx, length));
+
+            // parse the major taxa
+            startIdx += length+1;
+            length = 1;
+            while(tk[startIdx + length] != ' ' && tk[startIdx + length] != '\0')
+                length++;
+            std::cout << "stoi(" << tk.substr(startIdx, length) << ");" << std::endl;
+            int majorTaxa = stoi(tk.substr(startIdx, length));
+
+            // Create and push the event
+            MSJoinEvent *e = new MSJoinEvent(time, minorTaxa, majorTaxa);
+            events.push_back(e);
+        } else if(tk[2] == 's') {
+            // Split event
+            // parse the time
+            int startIdx = 4;
+            int length = 1;
+            while(tk[startIdx + length] != ' ')
+                length++;
+            double time = stod(tk.substr(startIdx, length));
+
+            // parse the taxa
+            startIdx += length + 1;
+            length = 1;
+            while(tk[startIdx + length] != ' ')
+                length++;
+            int taxa = stoi(tk.substr(startIdx, length));
+
+            // parse gamma
+            startIdx += length + 1;
+            length = 1;
+            while(tk[startIdx + length] != ' ' && tk[startIdx + length] != '\0')
+                length++;
+            double gamma = stod(tk.substr(startIdx, length));
+
+            // Create and push the event
+            MSSplitEvent *e = new MSSplitEvent(time, taxa, gamma);
+            events.push_back(e);
+        } else {
+            // Improper input
+            std::cout << "ERROR: Input ms command invalid; quitting." << std::endl;
+            exit(-1);
+        }
+    }
+
+    std::cout << "\n\nDone reading events." << std::endl;
+    for(MSEvent *e : events) {
+        std::cout << "\t";
+        
+        (e->getEventType() == join) ? ((MSJoinEvent*)e)->print() : ((MSSplitEvent*)e)->print();
+    }
+    return events;
+}
+
+std::string Network::getMSString(void) {
+    std::vector<MSEvent*> events = toms();
+    std::string str = std::string("");
+    
+    for(MSEvent* e : events) {
+        str += ((e->getEventType() == join) ? ((MSJoinEvent*)e)->toString() : ((MSSplitEvent*)e)->toString()) + " ";
+    }
+    return str.substr(0, str.length()-1);
+}
+
+void Network::buildFromNewick(std::string newickStr) {
     std::vector<std::string> tokens = parseNewick(newickStr);
 
     // build up the Network from the parsed Newick string

@@ -4,27 +4,21 @@
 #include <algorithm>
 
 int main(int narg, char *argv[]) {
-    // Read in network from Newick string
+    // Building a network from a Newick string
     std::string myNewick = "(((A:1,(B:0.3)#H1:0.7::0.9)e:1,(C:0.5,#H1:0.2::0.1)f:1.5)g:0.3,D:2.3)h;";
-    Network myNetwork(myNewick);
+    Network *myNetwork = new Network(myNewick, "newick");
 
-    // Get the ms parameters
-    std::vector<MSEvent*> myEvents = myNetwork.toms();
-    std::sort(myEvents.begin(), myEvents.end(), [](MSEvent *a, MSEvent*b) {
-        return a->getTime() < b->getTime();
-    });
+    // Retrieving an ms command that corresponds to an equivalent network
+    // WARNING: at the moment this function essentially destroys the underlying network,
+    //          so myNetwork cannot be reused after this. (will be fixed later)
+    std::string msCmd = myNetwork->getMSString();
+    std::cout << "\n\nCommand in ms format: " << msCmd << std::endl;
 
-    std::cout << "ms arguments corresponding to \"" << myNewick << "\", ordered by time:" << std::endl;
-    for(MSEvent *e : myEvents) {
-        std::cout << "\t";
-        
-        (e->getEventType() == join) ? ((MSJoinEvent*)e)->print() : ((MSSplitEvent*)e)->print();
-    }
+    // Reading a network from a sequence of ms joins and splits
+    Network *msNet = new Network(msCmd, "ms");
 
-    std::cout << std::endl << std::endl << "Now, let's use those MSEvent's to generate a new (identical) network." << std::endl;
-    Network msNetwork(myEvents);
-    std::cout << "\n\nNetwork generated." << std::endl << std::flush;
-    msNetwork.listNodes();
+    // A more explicit ms example
+    Network net("-ej 1.0 1 2 -es 1.5 3 0.25 -es 2.0 4 0.33 -ej 2.1 2 4 -ej 2.4 3 4 -ej 2.6 5 4", "ms");
 
     return 0;
 }

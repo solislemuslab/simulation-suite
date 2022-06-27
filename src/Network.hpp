@@ -19,9 +19,9 @@ class Network {
         ~Network(void);
         std::string getNewickRepresentation(void);
         int totalNodes(void) { return nodes.size(); }
-        Network(std::string newickStr);
+        Network(std::string str, std::string strFormat);
         Network(std::vector<MSEvent*> events);
-        std::vector<MSEvent*> toms(void);
+        std::string getMSString(void);
 
     protected:
         Network(void) { }
@@ -36,6 +36,9 @@ class Network {
         bool blankName(Node *p);
 
     private:
+        void buildFromNewick(std::string newickStr);
+        void buildFromMS(std::vector<MSEvent*> events);
+        std::vector<MSEvent*> parseMSEvents(std::string str);
         std::vector<std::string> parseNewick(std::string ns);
         void patchNetwork(void);
         void setTimes(void);
@@ -45,6 +48,7 @@ class Network {
         std::string getInternalName(int);
         std::string getLeafName(int);
         int postmsPatchAndRenameRecur(Node*, int);
+        std::vector<MSEvent*> toms(void);
 };
 
 #endif
