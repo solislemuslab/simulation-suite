@@ -23,6 +23,8 @@ class Network {
         Network(std::vector<MSEvent*> events);
         std::string getMSString(void);
 
+        std::vector<Node*> getNodes(void) { return nodes; }
+
     protected:
         Network(void) { }
         Node* root;
@@ -51,6 +53,9 @@ class Network {
         std::vector<MSEvent*> toms(void);
 };
 
-bool isomorphic(Network, Network);
+bool isomorphic(Network*, Network*);
+bool isomorphicNewick(std::string, std::string);
+bool isomorphicRecur(Node*, Node*);
+bool nodeEquivBranches(Node *p1, Node *p2);
 
 #endif

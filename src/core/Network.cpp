@@ -14,8 +14,79 @@ using namespace std;
 std::string BLANK_NAME = "__$!&*#%*__";
 
 
-bool isomorphic(Network net1, Network net2) {
-    return false;
+bool isomorphic(Network *net1, Network *net2) {
+    // Find the root of each network
+    Node *root1 = net1->getNodes()[0];
+    while(root1->getMajorAnc() != NULL)
+        root1 = root1->getMajorAnc();
+    
+    Node *root2 = net2->getNodes()[0];
+    while(root2->getMajorAnc() != NULL)
+        root2 = root2->getMajorAnc();
+
+    // Check for isomorphism recursively
+    return isomorphicRecur(root1, root2);
+}
+
+bool isomorphicRecur(Node *p1, Node *p2) {
+    // Both are NULL
+    if(p1 == p2)
+        return true;
+    // One is null but the other is not
+    if(p1 != p2 && (p1 == NULL || p2 == NULL))
+        return false;
+
+    // Check for equivalent hybrid statuses
+    // if one is a hybrid but not the either, return false.
+    if(p1->getMinorAnc() != p2->getMinorAnc() && (p1->getMinorAnc() == NULL || p2->getMinorAnc() == NULL))
+        return false;
+
+    // if branch info differs, return false.
+    if(!nodeEquivBranches(p1, p2))
+        return false;
+
+    // Get the left and right children of each node
+    Node *left1 = p1->getLft();
+    Node *right1 = p1->getRht();
+    Node *left2 = p2->getLft();
+    Node *right2 = p2->getRht();
+
+    // Check for equivalence of presence of children
+    // if they have differing amount of present children, return false.
+    if((left1 == NULL) + (right1 == NULL) != (left2 == NULL) + (right2 == NULL)) {
+        return false;
+    }
+
+    // If we've gotten this far, then we have to recur into the children
+    // we don't know which children could be equal, so we try all combinations
+    return (isomorphicRecur(left1, left2) && isomorphicRecur(right1, right2)) ||
+           (isomorphicRecur(left1, right2) && isomorphicRecur(left2, right1));
+}
+
+bool nodeEquivBranches(Node *p1, Node *p2) {
+    if(p1->getMinorAnc() == p2->getMinorAnc()) {
+        // Neither are hybrids
+        return 
+            // compare incoming branch lengths
+            p1->getMajorBranchLength() == p2->getMajorBranchLength() &&
+            // compare outgoing gammas
+            ((p1->getGammaLft() == p2->getGammaLft() && p1->getGammaRht() == p2->getGammaRht()) || (p1->getGammaLft() == p2->getGammaRht() && p1->getGammaRht() == p2->getGammaLft()));
+    } else {
+        // Both are hybrids
+        // if NOT(each of the branches of p1 matches one of p2's), return false.
+        if(!((p1->getMajorBranchLength() == p2->getMajorBranchLength() && p1->getMinorBranchLength() == p2->getMinorBranchLength()) ||
+           (p1->getMajorBranchLength() == p2->getMinorBranchLength() && p1->getMinorBranchLength() == p2->getMajorBranchLength())))
+           return false;
+
+        // if neither pairing of outgoing gamma values matches, return false.
+        if(!(p1->getGammaLft() == p2->getGammaLft() && p1->getGammaRht() == p2->getGammaRht()) && !(p1->getGammaLft() == p2->getGammaRht() && p1->getGammaRht() == p2->getGammaLft()))
+            return false;
+    }
+    return true;
+}
+
+bool isomorphicNewick(std::string newick1, std::string newick2) {
+    return isomorphic(new Network(newick1, "newick"), new Network(newick2, "newick"));
 }
 
 void Network::buildFromMS(std::vector<MSEvent*> events) {
@@ -662,7 +733,8 @@ void Network::patchNetwork() {
                 // Make the MajorAnc of the dead node's child into p
                 // The dead node's child should always be a left child, but better safe than sorry...
                 Node *deadChild = dead->getLft() != NULL ? dead->getLft() : dead->getRht();
-                deadChild->setMajorAnc(p);
+                if(deadChild != NULL)
+                    deadChild->setMajorAnc(p);
 
                 // Now make the child of the dead node p's child
                 // Make sure we aren't overriding a node if p already has a child
