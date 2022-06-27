@@ -29,9 +29,7 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
     // in the MSEvent's minus the total number of MSSplitEvent's
     int max = 0;
     int splits = 0;
-    cout << "join: " << join << ", split: " << split << std::endl;
     for(MSEvent *e : events) {
-        cout << e->getEventType() << std::endl;
         // Add a split. Splits necessarily create a new, larger number, so we don't need to
         // check these events for a maximum number
         if(e->getEventType() == split)
@@ -41,7 +39,6 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
         }
     }
     int ntaxa = max - splits;
-    cout << "ntaxa = " << max << "-" << splits << " = " << (max-splits) << std::endl;
 
     // activeNodes includes the most recent version of any given taxa. I.e. after a split event where taxa
     // 3 is turned into taxa 3 & taxa 7, the old node for taxa 3 will be removed, and both the new nodes added.
@@ -63,20 +60,11 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
     
     // Now, just process each event, and build the network backwards in time
     for(unsigned int i=0; i < events.size(); i++) {
-        // This line for debugging
-        std::cout << "activeNodes: {";
-        for(Node *n : activeNodes)
-            std::cout << n->getName() << ", ";
-        std::cout << "}" << std::endl;
-        //
-        std::cout << "\t";
-
         // Because we are doing things in chronological order, the time that a join event occurs should be
         // greater than or equal to the times of *each* of the nodes involved in the event. So, all we have
         // to do is create a parent pointing to each of the nodes involved.
         if(events[i]->getEventType() == join) {
             MSJoinEvent *e = (MSJoinEvent*)events[i];
-            e->print();
 
             // Both taxa involved in the join event should already exist
             Node *fromTaxa = NULL;
@@ -96,7 +84,6 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
                 if(fromTaxa != NULL && toTaxa != NULL)
                     break;
             }
-            std::cout << "\t\t\tfromIdx: " << fromIdx << ", toIdx: " << toIdx << std::endl;
 
             // If we couldn't find one or both of the taxa involved, this is an error; quit
             if(fromTaxa == NULL || toTaxa == NULL) {
@@ -135,7 +122,6 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
             nodes.push_back(p);
         } else if(events[i]->getEventType() == split) {
             MSSplitEvent *e = (MSSplitEvent*)events[i];
-            e->print();
             // Split events are straightforward, but require the use of an intermediate node that will be removed later.
             // This is because ms's protocol creates a new node everytime a split occurs, we essentially end up with a
             // duplicate node in our network. There are many ways that this could potentially be dealt with, but this is
@@ -361,7 +347,6 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
     // Parse the events
     for(unsigned int i=0; i < tks.size(); i++) {
         std::string tk = tks[i];
-        std::cout << "tks[" << i << "]: \"" << tks[i] << "\"" << std::endl;
 
         if(tk[2] == 'j') {
             // Join event
@@ -370,7 +355,6 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
             int length = 1;
             while(tk[startIdx + length] != ' ')
                 length++;
-            std::cout << "stod(" << tk.substr(startIdx, length) << ");" << std::endl;
             double time = stod(tk.substr(startIdx, length));
 
             // parse the minor taxa
@@ -378,7 +362,6 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
             length = 1;
             while(tk[startIdx + length] != ' ')
                 length++;
-            std::cout << "stoi(" << tk.substr(startIdx, length) << ");" << std::endl;
             int minorTaxa = stoi(tk.substr(startIdx, length));
 
             // parse the major taxa
@@ -386,7 +369,6 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
             length = 1;
             while(tk[startIdx + length] != ' ' && tk[startIdx + length] != '\0')
                 length++;
-            std::cout << "stoi(" << tk.substr(startIdx, length) << ");" << std::endl;
             int majorTaxa = stoi(tk.substr(startIdx, length));
 
             // Create and push the event
@@ -425,12 +407,6 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
         }
     }
 
-    std::cout << "\n\nDone reading events." << std::endl;
-    for(MSEvent *e : events) {
-        std::cout << "\t";
-        
-        (e->getEventType() == join) ? ((MSJoinEvent*)e)->print() : ((MSSplitEvent*)e)->print();
-    }
     return events;
 }
 
@@ -455,7 +431,6 @@ void Network::buildFromNewick(std::string newickStr) {
     Node* p = NULL;
     for(unsigned int i=0; i<tokens.size(); i++) {
         std::string token = tokens[i];
-        //std::cout << token << std::endl;
         if (token == "(") {
             readingBranchLength = false;
             readingBootSupport = false;
@@ -485,7 +460,7 @@ void Network::buildFromNewick(std::string newickStr) {
 
             // move down one node
             if (p->getMajorAnc() == NULL) {
-                std::cout << "Error: We cannot find an expected ancestor at i=" << i << "; p == root gives: " << (p == root) << std::endl;
+                std::cout << "ERROR: We cannot find an expected ancestor at i=" << i << "; p == root gives: " << (p == root) << std::endl;
                 exit(1);
             }
             p = p->getMajorAnc();
@@ -501,7 +476,7 @@ void Network::buildFromNewick(std::string newickStr) {
                 readingBootSupport = false;
                 readingGamma = true;
             } else if(readingGamma) {
-                std::cout << "Error: Read a sequence of four colons (possibly with names/numbers in between some of them). This is not allowed by the format; quitting." << std::endl;
+                std::cout << "ERROR: Read a sequence of four colons (possibly with names/numbers in between some of them). This is not allowed by the format; quitting." << std::endl;
                 exit(-1);
             } else {
                 // begin reading a branch length
@@ -511,7 +486,7 @@ void Network::buildFromNewick(std::string newickStr) {
             namingInternalNode = false;
             // finished!
             if (p != root) {
-                std::cout << "Error: We expect to finish at the root node" << std::endl;
+                std::cout << "ERROR: We expect to finish at the root node" << std::endl;
                 exit(1);
             }
         } else {
@@ -586,10 +561,6 @@ void Network::buildFromNewick(std::string newickStr) {
 
     // Add time information to the nodes
     setTimes();
-
-    cout << std::endl << std::endl;
-    listNodes();
-    easyDbg();
 }
 
 void Network::setTimes(void) {
@@ -625,40 +596,12 @@ void Network::setTimeRecur(Node *p) {
             majAnc->setTime(p->getTime() + p->getMajorBranchLength());
             setTimeRecur(majAnc);
         }
-
-        // if it exists and its time IS set, two options:
-        //   1. kill this line of recursion here
-        //   2. continue the recursion anyways and check for consistency (should only
-        //      be used for debugging and testing)
-        //
-        // 2. is currently implemented.
-        else {
-            // return;
-            if(majAnc->getTime() != p->getTime() + p->getMajorBranchLength()) {
-                cout << "\t\tTIMES DO NOT MATCH - " << majAnc->getTime() << " != " << p->getTime() << " + " << p->getMajorBranchLength() << std::endl;
-            }
-            setTimeRecur(majAnc);
-        }
     }
     if(minAnc != NULL) {
         // all the same stuff as with majAnc.
         // if it exists and its time is not set, set its time and then continue recursively
         if(minAnc->getTime() == -1) {
             minAnc->setTime(p->getTime() + p->getMinorBranchLength());
-            setTimeRecur(minAnc);
-        }
-
-        // if it exists and its time IS set, two options:
-        //   1. kill this line of recursion here
-        //   2. continue the recursion anyways and check for consistency (should only
-        //      be used for debugging and testing)
-        //
-        // 2. is currently implemented.
-        else {
-            // return;
-            if(minAnc->getTime() != p->getTime() + p->getMinorBranchLength()) {
-                cout << "\t\tTIMES DO NOT MATCH - " << minAnc->getTime() << " != " << p->getTime() << " + " << p->getMinorBranchLength() << std::endl;
-            }
             setTimeRecur(minAnc);
         }
     }
@@ -685,18 +628,11 @@ std::vector<std::string> Network::parseNewick(std::string ns) {
         }
     }
 
-    #if defined(DEBUG_NEWICK_PARSER)
-    std::cout << "The Newick string, broken into parts: " << std::endl;
-    for(unsigned int i = 0; i < tks.size(); i++) {
-        std::cout << " tks[" << i << "] = \"" << tks[i] << "\"" << std::endl;
-    }
-    #endif
     return tks;
 }
 
 // Patches up the hybrid edges on the network 
 void Network::patchNetwork() {
-    cout << std::endl << std::endl;
     std::vector<std::string> hybridNames;
     std::vector<int> nodeIndices;
     std::vector<int> removeMe;
@@ -794,8 +730,6 @@ void Network::patchNetwork() {
         // Don't leak memory
         delete n;
     }
-
-    cout << std::endl << std::endl;
 }
 
 int Network::hybridNameIndex(std::string val, std::vector<std::string> list) {
@@ -855,7 +789,6 @@ void Network::writeNetwork(Node* p, std::stringstream& ss) {
 }
 
 Network::~Network(void) {
-    cout << "Calling the Network destructor with " << nodes.size() << " nodes.\n";
     for(unsigned int i = 0; i < nodes.size(); i++)
         delete nodes[i];
 }
@@ -876,10 +809,8 @@ std::vector<MSEvent*> Network::toms(void) {
         if(nodes[i] != NULL) {
             if(nodes[i]->getLft() == NULL && nodes[i]->getRht() == NULL) {
                 activeNodes.push_back(nodes[i]);
-                cout << "Setting " << nodes[i]->getName() << " to next val" << std::endl;
                 nodes[i]->setName(popnCounter++);
             } else {
-                cout << "Setting " << nodes[i]->getName() << " to BLANK_NAME" << std::endl;
                 nodes[i]->setName(BLANK_NAME);
             }
         }
@@ -902,7 +833,7 @@ std::vector<MSEvent*> Network::toms(void) {
         for(i = 0; i < activeNodes.size(); i++) {
             Node *p = activeNodes[i];
             if(p == NULL) {
-                cout << "ACTIVE NODE IS NULL" << std::endl << std::flush;
+                cout << "ERROR: Active node is blank; quitting." << std::endl << std::flush;
                 exit(-1);
             }
 
