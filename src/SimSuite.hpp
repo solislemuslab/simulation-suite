@@ -3,6 +3,8 @@
 
 #include <string>
 
-std::string newickToMS(std::string newickStr);
+namespace SimSuite {
+    std::string newickToMS(std::string newickStr);
+}
 
 #endif
