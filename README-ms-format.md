@@ -16,7 +16,10 @@ int main(int narg, char **argv) {
 ### Running the code
 
 ```shell
-cd src/
+git clone https://github.com/solislemuslab/simulation-suite.git
+cd simulation-suite/src/
+
+# For now, msString must be adjusted in main.cpp to test different Newick strings
 make
 ./main
 ```
