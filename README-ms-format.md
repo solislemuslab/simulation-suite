@@ -7,7 +7,8 @@
 3. ~~Add gamma to the output of `Network::toms(void)`~~
 4. ~~Fix the Newick parser to work with the extended Newick format described in [PhyloNetworks](https://github.com/crsl4/PhyloNetworks.jl/wiki/Introduction)~~
 5. Have `Network::toms(void)` return a string containing the *entire* ms command line command, not just the `-es` and `-ej` parameters
-6. Lots of testing!!!!
+6. ~~Write functionality to grow a network from an ms command (primarily used for testing)~~
+7. Lots of testing!!!!
 
 ### Read a network in with Newick format
 
