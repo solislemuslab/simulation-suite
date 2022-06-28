@@ -37,3 +37,4 @@ clean:
 	$(RM) *.exe
 	$(RM) .\core\*.gch
 	$(RM) .\tests\*.gch
+	$(RM) .\*.gch

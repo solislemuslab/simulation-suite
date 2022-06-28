@@ -17,7 +17,8 @@ class Network {
     public:
         void listNodes(void);
         ~Network(void);
-        std::string getNewickRepresentation(void);
+        std::string getNewickRepresentation(void) { return getNewick(false); }
+        std::vector<std::string> getRandomNewickRepresentations(int);
         int totalNodes(void) { return nodes.size(); }
         Network(std::string str, std::string strFormat);
         Network(std::vector<MSEvent*> events);
@@ -29,13 +30,13 @@ class Network {
         Network(void) { }
         Node* root;
         std::vector<Node*> nodes;
-        void writeNetwork(Node *p, std::stringstream& ss, bool);
+        void writeNetwork(Node *p, std::stringstream& ss, bool, bool);
         bool isHybridName(std::string);
         int hybridNameIndex(std::string val, std::vector<std::string> list);
         int activeNodesIdx(Node *p, std::vector<Node*>);
-        void easyDbg(void) { }
         int getLength(std::string);
         int getTotalExtantTaxa(void);
+        std::string getNewick(bool);
 
     private:
         void buildFromNewick(std::string newickStr);

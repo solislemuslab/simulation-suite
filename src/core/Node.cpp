@@ -6,7 +6,7 @@
 Node::Node(void) {
     left = right = majorAncestor = minorAncestor = NULL;
     index = 0;
-    name = "";
+    name = std::string("");
     majorBranchLength = 0;
     minorBranchLength = 0;
     gamma = gammaLft = gammaRht = 0;

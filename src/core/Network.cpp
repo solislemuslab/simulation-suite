@@ -30,17 +30,23 @@ bool isomorphicRecur(Node *p1, Node *p2) {
     if(p1 == p2)
         return true;
     // One is null but the other is not
-    if(p1 != p2 && (p1 == NULL || p2 == NULL))
+    if(p1 != p2 && (p1 == NULL || p2 == NULL)) {
+        // std::cout << "Not isomorphic; " << (p1==NULL?p2->getName():p1->getName()) << " is not NULL, but its partner is.\n";
         return false;
+    }
 
     // Check for equivalent hybrid statuses
     // if one is a hybrid but not the either, return false.
-    if(p1->getMinorAnc() != p2->getMinorAnc() && (p1->getMinorAnc() == NULL || p2->getMinorAnc() == NULL))
+    if(p1->getMinorAnc() != p2->getMinorAnc() && (p1->getMinorAnc() == NULL || p2->getMinorAnc() == NULL)) {
+        // std::cout << "Hybrid status of " << p1->getName() << " and " << p2->getName() << " differs.\n";
         return false;
+    }
 
     // if branch info differs, return false.
-    if(!nodeEquivBranches(p1, p2))
+    if(!nodeEquivBranches(p1, p2)) {
+        // std::cout << "Branches of " << p1->getName() << " and " << p2->getName() << " differ.\n";
         return false;
+    }
 
     // Get the left and right children of each node
     Node *left1 = p1->getLft();
@@ -51,6 +57,7 @@ bool isomorphicRecur(Node *p1, Node *p2) {
     // Check for equivalence of presence of children
     // if they have differing amount of present children, return false.
     if((left1 == NULL) + (right1 == NULL) != (left2 == NULL) + (right2 == NULL)) {
+        // std::cout << "Sum presence of children of " << p1->getName() << " and " << p2->getName() << " differs.\n";
         return false;
     }
 
@@ -516,7 +523,7 @@ void Network::buildFromNewick(std::string newickStr) {
     Node* p = NULL;
     for(unsigned int i=0; i<tokens.size(); i++) {
         std::string token = tokens[i];
-        if (token == "(") {
+        if(token == "(") {
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -524,18 +531,18 @@ void Network::buildFromNewick(std::string newickStr) {
             // new node
             Node* newNode = new Node;
             nodes.push_back(newNode);
-            if (p == NULL) {
+            if(p == NULL) {
                 root = newNode;
             } else {
                 newNode->setMajorAnc(p);
-                if (p->getLft() == NULL)
+                if(p->getLft() == NULL)
                     p->setLft(newNode);
                 else
                     p->setRht(newNode);
             }
             
             p = newNode;
-        } else if (token == ")" || token == ",") {
+        } else if(token == ")" || token == ",") {
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -544,12 +551,12 @@ void Network::buildFromNewick(std::string newickStr) {
                 namingInternalNode = true;
 
             // move down one node
-            if (p->getMajorAnc() == NULL) {
+            if(p->getMajorAnc() == NULL) {
                 std::cout << "ERROR: We cannot find an expected ancestor at i=" << i << "; p == root gives: " << (p == root) << std::endl;
                 exit(1);
             }
             p = p->getMajorAnc();
-        } else if (token == ":") {
+        } else if(token == ":") {
             namingInternalNode = false;
 
             // if the field for branch length, boot support, or inheritance probability are left blank, then we end up here.
@@ -567,16 +574,16 @@ void Network::buildFromNewick(std::string newickStr) {
                 // begin reading a branch length
                 readingBranchLength = true;
             }
-        } else if (token == ";") {
+        } else if(token == ";") {
             namingInternalNode = false;
             // finished!
-            if (p != root) {
+            if(p != root) {
                 std::cout << "ERROR: We expect to finish at the root node" << std::endl;
                 exit(1);
             }
         } else {
             // we have a taxon name or a branch length
-            if (readingBranchLength == true) {
+            if(readingBranchLength == true) {
                 double x = std::stod(token);
                 p->setMajorBranchLength(x);
                 readingBranchLength = false;
@@ -607,7 +614,7 @@ void Network::buildFromNewick(std::string newickStr) {
                 nodes.push_back(newNode);
                 newNode->setMajorAnc(p);
                 
-                if (p->getLft() == NULL)
+                if(p->getLft() == NULL)
                     p->setLft(newNode);
                 else
                     p->setRht(newNode);
@@ -632,12 +639,12 @@ void Network::buildFromNewick(std::string newickStr) {
     // index the nodes
     int ndeIdx = 0;
     for(unsigned int i=0; i<nodes.size(); i++) {
-        if (nodes[i]->getLft() == NULL)
+        if(nodes[i]->getLft() == NULL)
             nodes[i]->setIndex(ndeIdx++);
     }
     
     for(unsigned int i=0; i<nodes.size(); i++) {
-        if (nodes[i]->getLft() != NULL)
+        if(nodes[i]->getLft() != NULL)
             nodes[i]->setIndex(ndeIdx++);
     }
 
@@ -734,61 +741,56 @@ void Network::patchNetwork() {
                 nodeIndices.push_back(i);
                 count++;
             } else {
-                // This is the copy of the node that we are killing
-                Node *dead = nodes[nodeIndices[idx]];
+                // This is the other node (we aren't actually sure if we're killing it yet)
+                Node *temp = nodes[nodeIndices[idx]];
 
-                // Make the MajorAnc of the dead node's child into p
-                // The dead node's child should always be a left child, but better safe than sorry...
-                Node *deadChild = dead->getLft() != NULL ? dead->getLft() : dead->getRht();
-                if(deadChild != NULL)
-                    deadChild->setMajorAnc(p);
-
-                // Now make the child of the dead node p's child
-                // Make sure we aren't overriding a node if p already has a child
-                if(p->getLft() != NULL)
-                    p->setRht(deadChild);
-                else
-                    p->setLft(deadChild);
+                // One of these nodes necessarily has 0 children, and the other necessarily has 1 child.
+                // We will keep the one with 1 child.
+                Node *dead = temp->getLft() == temp->getRht() ? temp : p;
+                p = (dead == temp) ? p : temp;
 
                 // We need to make sure that we set MajorAnc and MinorAnc properly!!!
                 // MajorAnc will be the ancestor from which the node receives >50% of its genes, and MinorAnc
                 // its complement. (In the case of a tie, it doesn't matter, so we don't do anything special...)
-                if(dead->getGamma() > p->getGamma()) {
-                    // Higher inheritance probability coming from the ancestor of dead
-                    p->setMinorAnc(p->getMajorAnc());
-                    p->setMinorBranchLength(p->getMajorBranchLength());
-                    p->setMajorAnc(dead->getMajorAnc());
-                    p->setMajorBranchLength(dead->getMajorBranchLength());
+                // if(dead->getGamma() > p->getGamma()) {
+                // Higher inheritance probability coming from the ancestor of dead
+                    // p->setMinorAnc(p->getMajorAnc());
+                    // p->setMinorBranchLength(p->getMajorBranchLength());
+                    // p->setMajorAnc(dead->getMajorAnc());
+                    // p->setMajorBranchLength(dead->getMajorBranchLength());
 
-                    // Set the gammas for each of p's ancestors
-                    if(p->getMajorAnc()->getLft() == p)
-                        p->getMajorAnc()->setGammaLft(dead->getGamma());
-                    else
-                        p->getMajorAnc()->setGammaRht(dead->getGamma());
+                    // // Set the gammas for each of p's ancestors
+                    // if(p->getMajorAnc()->getLft() == p)
+                    //     p->getMajorAnc()->setGammaLft(dead->getGamma());
+                    // else
+                    //     p->getMajorAnc()->setGammaRht(dead->getGamma());
                     
-                    // Now the minor ancestor
-                    if(p->getMinorAnc()->getLft() == p)
-                        p->getMinorAnc()->setGammaLft(p->getGamma());
-                    else
-                        p->getMinorAnc()->setGammaRht(p->getGamma());
-                } else {
-                    // Higher inheritance probability coming from the ancestor of p
-                    // p's MajorAnc is already correct, so just set the MinorAnc
-                    p->setMinorAnc(dead->getMajorAnc());
-                    p->setMinorBranchLength(dead->getMajorBranchLength());
+                    // // Now the minor ancestor
+                    // if(p->getMinorAnc()->getLft() == p)
+                    //     p->getMinorAnc()->setGammaLft(p->getGamma());
+                    // else
+                    //     p->getMinorAnc()->setGammaRht(p->getGamma());
+                // } else {
 
-                    // Set the gammas for each of p's ancestors
-                    if(p->getMajorAnc()->getLft() == p)
-                        p->getMajorAnc()->setGammaLft(p->getGamma());
-                    else
-                        p->getMajorAnc()->setGammaRht(p->getGamma());
-                    
-                    // Now the minor ancestor
-                    if(p->getMinorAnc()->getLft() == p)
-                        p->getMinorAnc()->setGammaLft(dead->getGamma());
-                    else
-                        p->getMinorAnc()->setGammaRht(dead->getGamma());
-                }
+                // By convention, p's majorAncestor will always stay
+                // Higher inheritance probability coming from the ancestor of p
+                // p's MajorAnc is already correct, so just set the MinorAnc
+                p->setMinorAnc(dead->getMajorAnc());
+                p->setMinorBranchLength(dead->getMajorBranchLength());
+
+                // Set the gammas for each of p's ancestors
+                if(p->getMajorAnc()->getLft() == p)
+                    p->getMajorAnc()->setGammaLft(p->getGamma());
+                else
+                    p->getMajorAnc()->setGammaRht(p->getGamma());
+                
+                // Now the minor ancestor
+                if(p->getMinorAnc()->getLft() == p)
+                    p->getMinorAnc()->setGammaLft(dead->getGamma());
+                else
+                    p->getMinorAnc()->setGammaRht(dead->getGamma());
+
+                // }
 
                 // Set p as the proper child of its new ancestor
                 if(dead->getMajorAnc()->getLft() == dead)
@@ -796,8 +798,11 @@ void Network::patchNetwork() {
                 else
                     dead->getMajorAnc()->setRht(p);
 
-                // Set the dead node to null
-                removeMe.push_back(nodeIndices[idx]);
+                // Stage the dead node for removal
+                if(dead == temp)
+                    removeMe.push_back(nodeIndices[idx]);
+                else
+                    removeMe.push_back(i);
             }
         }
     }
@@ -837,35 +842,64 @@ bool Network::isHybridName(std::string val) {
     return false;
 }
 
-std::string Network::getNewickRepresentation(void) {
+std::string Network::getNewick(bool randomWrite) {
     std::stringstream ss;
     
-    if (root->getLft() != NULL && root->getRht() != NULL)
-        writeNetwork(root, ss, false);
+    if(root->getLft() != NULL && root->getRht() != NULL)
+        writeNetwork(root, ss, false, randomWrite);
     else
-        writeNetwork(root->getLft(), ss, false);
+        writeNetwork(root->getLft(), ss, false, randomWrite);
     ss << ";";
     
     std::string newick = ss.str();
     return newick;
 }
 
-void Network::writeNetwork(Node* p, std::stringstream& ss, bool minorHybrid) {
+std::vector<std::string> Network::getRandomNewickRepresentations(int n) {
+    std::vector<std::string> l;
+    for(int i=0; i < n; i++)
+        l.push_back(getNewick(true));
+    return l;
+}
+
+void Network::writeNetwork(Node* p, std::stringstream& ss, bool minorHybrid, bool randomWrite) {
+    // randomWrite is a variable that was added to get different Newick strings for the same tree.
+    // This will make automating testing our isomorphicNewick function MUCH easier (in one direction at least)
+    //
     // Different rules apply when dealing with hybrids, but we still want to traverse them normally once.
     // The variable `minorHybrid` allows us to traverse a hybrid node twice, differently both times.
-    if (p != NULL) {
-        if (p->getLft() == NULL || minorHybrid) {
+    if(p != NULL) {
+        if(p->getLft() == NULL || minorHybrid) {
             ss << p->getNewickFormattedName(minorHybrid, (minorHybrid ? (p == p->getMinorAnc()->getLft() ? p->getMinorAnc()->getGammaLft() : p->getMinorAnc()->getGammaRht()) : -1));
-            // p->getName() << ":" << std::fixed << std::setprecision(5) << (minorHybrid ? p->getMinorBranchLength() : p->getMajorBranchLength());
-            
         } else {
             ss << "(";
-            writeNetwork (p->getLft(), ss, p->getGammaLft() != 0 && p->getLft()->getMinorAnc() == p);
+
+            if(randomWrite && p->getRht() != NULL) {
+                // With a 50% chance, go right instead of left
+                float randVal = (float) rand() / RAND_MAX;
+                if(randVal > 0.50) {
+                    // Write the network as per usual.
+                    writeNetwork(p->getRht(), ss, p->getGammaRht() != 0 && p->getRht()->getMinorAnc() == p, randomWrite);
+                    ss << ",";
+                    writeNetwork(p->getLft(), ss, p->getGammaLft() != 0 && p->getLft()->getMinorAnc() == p, randomWrite);
+
+                    if(p->getMajorAnc() == NULL)
+                        // Root only have a name; not branch lengths or boot support or gamma
+                        ss << ")" << p->getName();
+                    else
+                        ss << ")" << p->getNewickFormattedName(minorHybrid, p->getMinorAnc() == NULL ? -1 : (p->getMajorAnc()->getLft() == p ? p->getMajorAnc()->getGammaLft() : p->getMajorAnc()->getGammaRht()));
+
+                    return;
+                }
+            }
+            
+            // Write the network as per usual.
+            writeNetwork(p->getLft(), ss, p->getGammaLft() != 0 && p->getLft()->getMinorAnc() == p, randomWrite);
             if(p->getRht() != NULL) {
                 ss << ",";
-                writeNetwork (p->getRht(), ss, p->getGammaRht() != 0 && p->getRht()->getMinorAnc() == p);
+                writeNetwork(p->getRht(), ss, p->getGammaRht() != 0 && p->getRht()->getMinorAnc() == p, randomWrite);
             }
-            if (p->getMajorAnc() == NULL)
+            if(p->getMajorAnc() == NULL)
                 // Root only have a name; not branch lengths or boot support or gamma
                 ss << ")" << p->getName();
             else
