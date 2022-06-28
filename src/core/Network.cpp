@@ -500,7 +500,7 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
 std::string Network::getMSString(void) {
     std::vector<MSEvent*> events = toms();
     int ntaxa = getTotalExtantTaxa();
-    std::string str = std::string("ms " + std::to_string(ntaxa) + " ${nrep} -I " + std::to_string(ntaxa) + " ");
+    std::string str = std::string("ms " + std::to_string(ntaxa) + " 1 -I " + std::to_string(ntaxa) + " ");
     for(int i=0; i < ntaxa; i++)
         str += "1 ";
 
