@@ -17,5 +17,14 @@ int main(int narg, char *argv[]) {
     else
         std::cout << "Not equivalent :(" << std::endl;
 
+    std::cout << net1.getMSString() << std::endl;
+    
+    std::cout << "\n\nRunning ms non-sense.\n";
+    std::cout << net1.getMSString() << std::endl;
+    std::cout << net1.getMSString() << std::endl;
+    std::cout << net1.getNewickRepresentation() << std::endl;
+    std::cout << net1.getMSString() << std::endl;
+    std::cout << net1.getNewickRepresentation() << std::endl;
+
     return 0;
 }

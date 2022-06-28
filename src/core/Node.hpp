@@ -46,6 +46,9 @@ class Node {
         void printInfo(void);
         bool touched = false;
 
+        void setHiddenID(int id) { hiddenID = id; }
+        int getHiddenID(void) { return hiddenID; }
+
         std::string getNewickFormattedName(bool, double);
     
     protected:
@@ -58,10 +61,11 @@ class Node {
         double majorBranchLength;    // NOTE: BRANCH LENGTHS CORRESPOND TO **INCOMING** BRANCHES, NOT OUTGOING
         double minorBranchLength;
         double time;
-        double gammaLft = 0;         // NOTE: OUTGOING GAMMA, i.e. this is the percent of genes this node gives to its left child
-        double gammaRht = 0;         // same as with gammaLft
-        double bootSupport = -1;
-        double gamma = 0;
+        double gammaLft;             // NOTE: OUTGOING GAMMA, i.e. this is the percent of genes this node gives to its left child
+        double gammaRht;             // same as with gammaLft
+        double bootSupport;
+        double gamma;
+        int hiddenID;                // Used in the Network::toms() function, so that node names are not disrupted 
 };
 
 #endif

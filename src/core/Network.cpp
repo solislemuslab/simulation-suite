@@ -10,9 +10,6 @@
 #include <algorithm>
 #include <typeinfo>
 
-using namespace std;
-std::string BLANK_NAME = "__$!&*#%*__";
-
 
 bool isomorphic(Network *net1, Network *net2) {
     // Find the root of each network
@@ -268,8 +265,6 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
             exit(-1);
         }
     }
-
-    listNodes();
 
     // All of the nodes in the network have indistinguishable names right now, so let's fix that
     postmsPatchAndRename();
@@ -900,9 +895,9 @@ std::vector<MSEvent*> Network::toms(void) {
         if(nodes[i] != NULL) {
             if(nodes[i]->getLft() == NULL && nodes[i]->getRht() == NULL) {
                 activeNodes.push_back(nodes[i]);
-                nodes[i]->setName(popnCounter++);
+                nodes[i]->setHiddenID(popnCounter++);
             } else {
-                nodes[i]->setName(BLANK_NAME);
+                nodes[i]->setHiddenID(-1);
             }
         }
     }
@@ -924,7 +919,7 @@ std::vector<MSEvent*> Network::toms(void) {
         for(i = 0; i < activeNodes.size(); i++) {
             Node *p = activeNodes[i];
             if(p == NULL) {
-                cout << "ERROR: Active node is blank; quitting." << std::endl << std::flush;
+                std::cout << "ERROR: Active node is blank; quitting." << std::endl << std::flush;
                 exit(-1);
             }
 
@@ -933,8 +928,8 @@ std::vector<MSEvent*> Network::toms(void) {
             // a. if only one ancestor (this will only ever take place when there is a MajorAnc and NOT a MinorAnc)
             if(majAnc != NULL && minAnc == NULL) {
                 // I. if the anc is NOT named: take the anc
-                if(blankName(majAnc)) {
-                    majAnc->setName(p->getName());
+                if(majAnc->getHiddenID() == -1) {
+                    majAnc->setHiddenID(p->getHiddenID());
 
                     // Remove p and add majAnc
                     removeMe.push_back(i);
@@ -942,7 +937,7 @@ std::vector<MSEvent*> Network::toms(void) {
                 }
                 // II. if anc named: coalesce *INTO* the ancestor
                 else {
-                    events.push_back(new MSJoinEvent(majAnc->getTime(), p->getName(), majAnc->getName()));
+                    events.push_back(new MSJoinEvent(majAnc->getTime(), p->getHiddenID(), majAnc->getHiddenID()));
 
                     // Remove p; majAnc is already named, so if it still has more potential things to do, it should be
                     // in activeNodes already. So we don't need to touch it.
@@ -952,41 +947,41 @@ std::vector<MSEvent*> Network::toms(void) {
             // b. if we have two ancestors
             else if(majAnc != NULL && minAnc != NULL) {
                 // I. both ancs unnamed: split, give MajorAnc our name and give MinorAnc a new name
-                if(blankName(majAnc) && blankName(minAnc)) {
+                if(majAnc->getHiddenID() == -1 && minAnc->getHiddenID() == -1) {
                     // p is coalescing into majAnc, so gamma on this split comes from majAnc
                     double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
 
                     // Split
-                    events.push_back(new MSSplitEvent(p->getTime(), p->getName(), gamma));
+                    events.push_back(new MSSplitEvent(p->getTime(), p->getHiddenID(), gamma));
 
                     // Give MajorAnc our name and add MajorAnc to activeNodes
-                    majAnc->setName(p->getName());
+                    majAnc->setHiddenID(p->getHiddenID());
                     addMe.push_back(majAnc);
 
                     // Give MinorAnc its new name and add it to activeNodes
-                    minAnc->setName(popnCounter++);
+                    minAnc->setHiddenID(popnCounter++);
                     addMe.push_back(minAnc);
 
                     // Remove p from activeNodes
                     removeMe.push_back(i);
                 }
                 // II. if only one anc is named: split, give the blank anc a new name, and then join with the named anc
-                else if(blankName(majAnc) != blankName(minAnc)) {
-                    Node *namedAnc = blankName(majAnc) ? minAnc : majAnc;
-                    Node *unnamedAnc = blankName(majAnc) ? majAnc : minAnc;
+                else if((majAnc->getHiddenID() == -1) != (minAnc->getHiddenID() == -1)) {
+                    Node *namedAnc = (majAnc->getHiddenID() == -1) ? minAnc : majAnc;
+                    Node *unnamedAnc = (majAnc->getHiddenID() == -1) ? majAnc : minAnc;
 
                     // p is coalescing into unnamedAnc, so gamma comes from unnamedAnc 
                     double gamma = (unnamedAnc->getLft() == p) ? unnamedAnc->getGammaLft() : unnamedAnc->getGammaRht();
 
                     // Split
-                    events.push_back(new MSSplitEvent(p->getTime(), p->getName(), gamma));
+                    events.push_back(new MSSplitEvent(p->getTime(), p->getHiddenID(), gamma));
 
                     // Give the blank anc a new name and add it to the queue
-                    unnamedAnc->setName(popnCounter++);
+                    unnamedAnc->setHiddenID(popnCounter++);
                     addMe.push_back(unnamedAnc);
 
                     // Join
-                    events.push_back(new MSJoinEvent(namedAnc->getTime(), p->getName(), namedAnc->getName()));
+                    events.push_back(new MSJoinEvent(namedAnc->getTime(), p->getHiddenID(), namedAnc->getHiddenID()));
 
                     // Remove p
                     removeMe.push_back(i);
@@ -997,13 +992,13 @@ std::vector<MSEvent*> Network::toms(void) {
                     double gamma = (majAnc->getLft() == p) ? majAnc->getGammaLft() : majAnc->getGammaRht();
 
                     // Split
-                    events.push_back(new MSSplitEvent(p->getTime(), p->getName(), gamma));
+                    events.push_back(new MSSplitEvent(p->getTime(), p->getHiddenID(), gamma));
 
                     // Join left
-                    events.push_back(new MSJoinEvent(majAnc->getTime(), p->getName(), majAnc->getName()));
+                    events.push_back(new MSJoinEvent(majAnc->getTime(), p->getHiddenID(), majAnc->getHiddenID()));
 
                     // Join right
-                    events.push_back(new MSJoinEvent(minAnc->getTime(), popnCounter++, minAnc->getName()));
+                    events.push_back(new MSJoinEvent(minAnc->getTime(), popnCounter++, minAnc->getHiddenID()));
 
                     // Remove p
                     removeMe.push_back(i);
@@ -1032,10 +1027,6 @@ std::vector<MSEvent*> Network::toms(void) {
     }
 
     return events;
-}
-
-bool Network::blankName(Node *p) {
-    return p->getName().compare(BLANK_NAME) == 0;
 }
 
 int Network::activeNodesIdx(Node *p, std::vector<Node*> list) {

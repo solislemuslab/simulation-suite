@@ -35,7 +35,6 @@ class Network {
         int activeNodesIdx(Node *p, std::vector<Node*>);
         void easyDbg(void) { }
         int getLength(std::string);
-        bool blankName(Node *p);
         int getTotalExtantTaxa(void);
 
     private:
