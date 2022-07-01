@@ -13,14 +13,10 @@ int main(int narg, char *argv[]) {
     std::cout << "Building net2" << std::endl;
     Network net2(n2, "newick");
 
-    if(isomorphicNewick(n1, n2))
-        std::cout << "Equivalent!" << std::endl;
-    else
-        std::cout << "Not equivalent :(" << std::endl;
-
-    Network net3(n3, "newick");
-    std::cout << "\nBase Newick representation:\n";
-    std::cout << net3.getNewickRepresentation();
+    std::vector<std::string> allNewicksn1 = net1.getAllNewicks();
+    std::cout << "All Newick reps:\n";
+    for(std::string str : allNewicksn1)
+        std::cout << "\t" << str << "\n";
 
     // std::vector<std::string> newicks = net3.getRandomNewickRepresentations(5);
     // std::cout << "\n\nRandom equivalent Newick representations:\n";
