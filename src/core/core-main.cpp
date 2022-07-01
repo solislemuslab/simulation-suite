@@ -13,11 +13,6 @@ int main(int narg, char *argv[]) {
     std::cout << "Building net2" << std::endl;
     Network net2(n2, "newick");
 
-    std::vector<std::string> allNewicksn1 = net1.getAllNewicks();
-    std::cout << "All Newick reps:\n";
-    for(std::string str : allNewicksn1)
-        std::cout << "\t" << str << "\n";
-
     // std::vector<std::string> newicks = net3.getRandomNewickRepresentations(5);
     // std::cout << "\n\nRandom equivalent Newick representations:\n";
     // for(std::string str : newicks)

@@ -5,8 +5,7 @@ ifeq ($(OS),Windows_NT)
 	RM := del /f
 endif
 
-
-build: core-main main
+build: clean core-main main
 
 all: core-main main test
 
