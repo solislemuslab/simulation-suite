@@ -32,6 +32,13 @@ int main(int narg, char **argv) {
     std::cout << "GAB: Three-leaf example, ultrametric" << std::endl;
     std::string threeTaxTree = SimSuite::newickToMS("((A:0.5,B:0.5):0.5,C:1.0)h;");
     std::cout << threeTaxTree << std::endl;    
+
+    // A true, small network.
+    // This one fails
+    std::cout << "GAB: Three-leaf network example, ultrametric" << std::endl;
+    std::string threeTaxNet = SimSuite::newickToMS("((((A:0.25)#H1:0.25,B:0.5):0.5,#H1:::0.1):0.5,C:1.0);");
+    std::cout << threeTaxNet << std::endl;    
+
     
     // ----------------------------
     // - Testing section; ignore. -
