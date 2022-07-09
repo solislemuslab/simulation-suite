@@ -35,6 +35,6 @@ main: SimSuite.o Network.o Node.o main.cpp
 clean:
 	$(RM) *.o
 	$(RM) *.exe
-	$(RM) .\core\*.gch
-	$(RM) .\tests\*.gch
-	$(RM) .\*.gch
+	$(RM) ./core/*.gch
+	$(RM) ./tests/*.gch
+	$(RM) ./*.gch
