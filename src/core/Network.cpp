@@ -32,6 +32,8 @@ bool Network::permuteRandomGamma(double change) {
     // select a random node
 
     // permute its gamma (favors the left by default)
+
+    return false;
 }
 
 bool isomorphic(Network *net1, Network *net2) {
@@ -945,16 +947,58 @@ void Network::listNodes(void) {
 std::vector<MSEvent*> Network::toms(void) {
     std::vector<MSEvent*> events;
     // First, gather & name all leaves while setting the names of non-leaves to null
+    std::vector<std::string> nodeNames;
     std::vector<Node*> activeNodes;
-    int popnCounter = 1;
     for(unsigned int i = 0; i < nodes.size(); i++) {
         if(nodes[i] != NULL) {
             if(nodes[i]->getLft() == NULL && nodes[i]->getRht() == NULL) {
                 activeNodes.push_back(nodes[i]);
-                nodes[i]->setHiddenID(popnCounter++);
+                nodeNames.push_back(nodes[i]->getName());
             } else {
                 nodes[i]->setHiddenID(-1);
             }
+        }
+    }
+
+    // Second, check if all nodes are already named 1, 2, 3, 4, ..., if so, we do NOT want to overwrite names
+    bool overwriteNames = false;
+
+    try {
+        // We need to sort them as integers, not as strings
+        std::sort(nodeNames.begin(), nodeNames.end(), [](std::string a, std::string b) {
+            return std::stoi(b) > std::stoi(a);
+        });
+
+        for(unsigned int i = 0; i < nodeNames.size(); i++) {
+            try {
+                if(std::stoi(nodeNames[i]) != i+1) {
+                    std::cout << nodeNames[i] << ", " << i+1 << std::endl;
+                    overwriteNames = true;
+                    break;
+                }
+            } catch(...) {
+                overwriteNames = true;
+            }
+        }
+    } catch(...) {
+        // If we caught here, that means there was an error with std::stoi(...) in the std::sort(...) method
+        overwriteNames = true;
+    }
+    
+
+    // If overwriteNames is now true, overwrite the names
+    int popnCounter = 1;
+    if(overwriteNames) {
+        std::cerr << "WARNING: Taxon names do not appear to be natural numbers ascending from 1 (i.e. 1, 2, 3, 4, ...), so taxon names will be overwritten." << std::endl;
+        // Set the IDs
+        for(unsigned int i = 0; i < activeNodes.size(); i++) {
+            activeNodes[i]->setHiddenID(popnCounter++);
+        }
+    } else {
+        // If the names are already good, we still have to set hidden IDs and progress the popnCounter
+        for(unsigned int i = 0; i < activeNodes.size(); i++) {
+            activeNodes[i]->setHiddenID(std::stoi(activeNodes[i]->getName()));
+            popnCounter++;
         }
     }
 
