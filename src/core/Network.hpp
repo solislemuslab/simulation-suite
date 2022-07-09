@@ -26,6 +26,7 @@ class Network {
         std::string getMSString(void);
 
         std::vector<Node*> getNodes(void) { return nodes; }
+        bool permuteRandomGamma(double gamma);
 
     protected:
         Network(void) { }
