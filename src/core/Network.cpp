@@ -1083,6 +1083,9 @@ std::vector<MSEvent*> Network::toms(void) {
         }
     }
 
+    sort(events.begin(), events.end(), [](MSEvent *a, MSEvent *b) {
+        return a->getTime() < b->getTime();
+    });
     return events;
 }
 
