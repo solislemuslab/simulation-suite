@@ -539,6 +539,7 @@ std::string Network::getMSString(void) {
 void Network::buildFromNewick(std::string newickStr) {
     std::vector<std::string> tokens = parseNewick(newickStr);
 
+    bool warnedNoBranchLengths = false;
     // build up the Network from the parsed Newick string
     bool readingBranchLength = false;
     bool readingBootSupport = false;
@@ -548,6 +549,7 @@ void Network::buildFromNewick(std::string newickStr) {
     for(unsigned int i=0; i<tokens.size(); i++) {
         std::string token = tokens[i];
         if(token == "(") {
+            warnBranchLength(readingBranchLength, warnedNoBranchLengths);
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -567,6 +569,7 @@ void Network::buildFromNewick(std::string newickStr) {
             
             p = newNode;
         } else if(token == ")" || token == ",") {
+            warnBranchLength(readingBranchLength, warnedNoBranchLengths);
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -677,6 +680,13 @@ void Network::buildFromNewick(std::string newickStr) {
 
     // Add time information to the nodes
     setTimes();
+}
+
+void Network::warnBranchLength(bool readingBranchLength, bool &alreadyWarned) {
+    if(readingBranchLength && !alreadyWarned) {
+        std::cerr << "WARNING: At least one branch length was left unspecified and is defaulting to length 0." << std::endl;
+        alreadyWarned = true;
+    }
 }
 
 void Network::setTimes(void) {
