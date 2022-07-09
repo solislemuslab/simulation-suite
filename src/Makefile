@@ -1,8 +1,13 @@
 CPPFLAGS := -Wall -std=c++11 -g
 CPP := g++
 
+PATH_SEP=/
+NULL_DEVICE=/dev/null
 ifeq ($(OS),Windows_NT)
-	RM := del /f
+	RM := del /q /f
+	PATH_SEP=\\
+	
+	NULL_DEVICE=nul
 endif
 
 build: clean core-main main
@@ -32,8 +37,8 @@ main: SimSuite.o Network.o Node.o main.cpp
 	$(CPP) $(CPPFLAGS) SimSuite.o Network.o Node.o main.cpp -o main
 
 clean:
-	$(RM) *.o
-	$(RM) *.exe
-	$(RM) ./core/*.gch
-	$(RM) ./tests/*.gch
-	$(RM) ./*.gch
+	$(RM) *.o 2> $(NULL_DEVICE)
+	$(RM) *.exe 2> $(NULL_DEVICE)
+	$(RM) .$(PATH_SEP)core$(PATH_SEP)*.gch 2> $(NULL_DEVICE)
+	$(RM) .$(PATH_SEP)tests$(PATH_SEP)*.gch 2> $(NULL_DEVICE)
+	$(RM) .$(PATH_SEP)*.gch 2> $(NULL_DEVICE)
