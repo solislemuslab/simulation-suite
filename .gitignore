@@ -1,5 +1,9 @@
 # This project
 data/*
+src/core-main*
+src/main.dSYM/*
+resources/*
+Src/main
 
 # Compiled source #
 ###################

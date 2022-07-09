@@ -8,7 +8,7 @@ int main(int narg, char **argv) {
     // -----------------------------------------------------------------------
 
     // Convert extended Newick to MS
-    std::string msString = SimSuite::newickToMS("(((A:1,(B:0.3)#H1:0.7::0.9)e:1,(C:0.5,#H1:0.2::0.1)f:1.5)g:0.3,D:2.3)h;");
+    std::string msString = SimSuite::newickToMS("(15:11.0,(1:10.0,((14:8.0,(((7:2.8,(10:1.6,(9:0.4,8:0.4):1.2):1.2):0.8,(11:2.8,(13:0.4,12:0.4):2.4):0.8):3.4,#H1:0.4::0.3):1.0):1.2,(((2:0.4,3:0.4):5.2,((4:3.6,5:3.6):1.2,6:4.8):0.8):1.0)#H1:2.6::0.7):0.8):1.0);");
     std::cout << msString << std::endl;
 
     // Some tests by GAB
@@ -38,21 +38,4 @@ int main(int narg, char **argv) {
     std::cout << "GAB: Three-leaf network example, ultrametric" << std::endl;
     std::string threeTaxNet = SimSuite::newickToMS("((((A:0.25)#H1:0.25,B:0.5):0.5,#H1:::0.1):0.5,C:1.0);");
     std::cout << threeTaxNet << std::endl;    
-
-    
-    // ----------------------------
-    // - Testing section; ignore. -
-    // ----------------------------
-
-    std::string newick = std::string("((1:0.1,((2:0.2,(3:0.3,(4:0.4)Y#H1:0.5)g:0.6)e:0.7,(((Y#H1:0.8,5:0.9)h:1.0,6:1.1)f:1.2)X#H2:1.3)c:1.4)a:1.5,((X#H2:1.6,7:1.7)d:1.8,8:1.9)b:2.0)r;");
-    Network net(newick, "newick");
-
-    std::vector<std::string> randomNewicks = net.getRandomNewickRepresentations(10);
-
-    // std::cout << randomNewicks[0] << std::endl;
-    for(unsigned int i=0; i < randomNewicks.size()-1; i++) {
-        // std::cout << "\t\t" << (isomorphicNewick(randomNewicks[i], randomNewicks[i+1]) ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl << randomNewicks[1] << std::endl;
-        std::cout << randomNewicks[i] << std::endl << randomNewicks[i+1] << std::endl;
-        std::cout << "\t" << (isomorphicNewick(randomNewicks[i], randomNewicks[i+1]) ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl;
-    }
 }

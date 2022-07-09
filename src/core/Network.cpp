@@ -32,6 +32,8 @@ bool Network::permuteRandomGamma(double change) {
     // select a random node
 
     // permute its gamma (favors the left by default)
+
+    return false;
 }
 
 bool isomorphic(Network *net1, Network *net2) {
@@ -421,6 +423,8 @@ int Network::getTotalExtantTaxa(void) {
     return count;
 }
 
+// IMPORTANT NOTE: for ms commands, RIGHT NOW (to be changed), the only accepted input form is
+//  a series of -ej <t> <i> <j> and -es <t> <i> <gamma> options
 Network::Network(std::string str, std::string strFormat) {
     if(strFormat.compare("newick") == 0)
         buildFromNewick(str);
@@ -524,10 +528,7 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
 
 std::string Network::getMSString(void) {
     std::vector<MSEvent*> events = toms();
-    int ntaxa = getTotalExtantTaxa();
-    std::string str = std::string("ms " + std::to_string(ntaxa) + " 1 -I " + std::to_string(ntaxa) + " ");
-    for(int i=0; i < ntaxa; i++)
-        str += "1 ";
+    std::string str = std::string("");
 
     for(MSEvent* e : events) {
         str += ((e->getEventType() == join) ? ((MSJoinEvent*)e)->toString() : ((MSSplitEvent*)e)->toString()) + " ";
@@ -538,6 +539,7 @@ std::string Network::getMSString(void) {
 void Network::buildFromNewick(std::string newickStr) {
     std::vector<std::string> tokens = parseNewick(newickStr);
 
+    bool warnedNoBranchLengths = false;
     // build up the Network from the parsed Newick string
     bool readingBranchLength = false;
     bool readingBootSupport = false;
@@ -547,6 +549,7 @@ void Network::buildFromNewick(std::string newickStr) {
     for(unsigned int i=0; i<tokens.size(); i++) {
         std::string token = tokens[i];
         if(token == "(") {
+            warnBranchLength(readingBranchLength, warnedNoBranchLengths);
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -566,6 +569,7 @@ void Network::buildFromNewick(std::string newickStr) {
             
             p = newNode;
         } else if(token == ")" || token == ",") {
+            warnBranchLength(readingBranchLength, warnedNoBranchLengths);
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -676,6 +680,13 @@ void Network::buildFromNewick(std::string newickStr) {
 
     // Add time information to the nodes
     setTimes();
+}
+
+void Network::warnBranchLength(bool readingBranchLength, bool &alreadyWarned) {
+    if(readingBranchLength && !alreadyWarned) {
+        std::cerr << "WARNING: At least one branch length was left unspecified and is defaulting to length 0." << std::endl;
+        alreadyWarned = true;
+    }
 }
 
 void Network::setTimes(void) {
@@ -946,16 +957,58 @@ void Network::listNodes(void) {
 std::vector<MSEvent*> Network::toms(void) {
     std::vector<MSEvent*> events;
     // First, gather & name all leaves while setting the names of non-leaves to null
+    std::vector<std::string> nodeNames;
     std::vector<Node*> activeNodes;
-    int popnCounter = 1;
     for(unsigned int i = 0; i < nodes.size(); i++) {
         if(nodes[i] != NULL) {
             if(nodes[i]->getLft() == NULL && nodes[i]->getRht() == NULL) {
                 activeNodes.push_back(nodes[i]);
-                nodes[i]->setHiddenID(popnCounter++);
+                nodeNames.push_back(nodes[i]->getName());
             } else {
                 nodes[i]->setHiddenID(-1);
             }
+        }
+    }
+
+    // Second, check if all nodes are already named 1, 2, 3, 4, ..., if so, we do NOT want to overwrite names
+    bool overwriteNames = false;
+
+    try {
+        // We need to sort them as integers, not as strings
+        std::sort(nodeNames.begin(), nodeNames.end(), [](std::string a, std::string b) {
+            return std::stoi(b) > std::stoi(a);
+        });
+
+        for(unsigned int i = 0; i < nodeNames.size(); i++) {
+            try {
+                if(std::stoi(nodeNames[i]) != i+1) {
+                    std::cout << nodeNames[i] << ", " << i+1 << std::endl;
+                    overwriteNames = true;
+                    break;
+                }
+            } catch(...) {
+                overwriteNames = true;
+            }
+        }
+    } catch(...) {
+        // If we caught here, that means there was an error with std::stoi(...) in the std::sort(...) method
+        overwriteNames = true;
+    }
+    
+
+    // If overwriteNames is now true, overwrite the names
+    int popnCounter = 1;
+    if(overwriteNames) {
+        std::cerr << "WARNING: Taxon names do not appear to be natural numbers ascending from 1 (i.e. 1, 2, 3, 4, ...), so taxon names will be overwritten." << std::endl;
+        // Set the IDs
+        for(unsigned int i = 0; i < activeNodes.size(); i++) {
+            activeNodes[i]->setHiddenID(popnCounter++);
+        }
+    } else {
+        // If the names are already good, we still have to set hidden IDs and progress the popnCounter
+        for(unsigned int i = 0; i < activeNodes.size(); i++) {
+            activeNodes[i]->setHiddenID(std::stoi(activeNodes[i]->getName()));
+            popnCounter++;
         }
     }
 
@@ -1083,6 +1136,9 @@ std::vector<MSEvent*> Network::toms(void) {
         }
     }
 
+    sort(events.begin(), events.end(), [](MSEvent *a, MSEvent *b) {
+        return a->getTime() < b->getTime();
+    });
     return events;
 }
 

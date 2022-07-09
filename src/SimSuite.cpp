@@ -7,9 +7,14 @@
 
 namespace SimSuite {
     std::string newickToMS(std::string newickStr) {
-        Network *net = new Network(newickStr, "newick");
-        std::string msString = net->getMSString();
-        delete net;
+        Network net(newickStr, "newick");
+        std::string msString = net.getMSString();
         return msString;
+    }
+
+    std::string msToNewick(std::string msStr) {
+        Network net(msStr, "ms");
+        std::string newick = net.getNewickRepresentation();
+        return newick;
     }
 }

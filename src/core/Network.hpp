@@ -55,6 +55,7 @@ class Network {
         std::string getLeafName(int);
         int postmsPatchAndRenameRecur(Node*, int);
         std::vector<MSEvent*> toms(void);
+        void warnBranchLength(bool, bool&);
 };
 
 bool isomorphic(Network*, Network*);
