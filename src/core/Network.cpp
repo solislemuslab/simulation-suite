@@ -421,6 +421,8 @@ int Network::getTotalExtantTaxa(void) {
     return count;
 }
 
+// IMPORTANT NOTE: for ms commands, RIGHT NOW (to be changed), the only accepted input form is
+//  a series of -ej <t> <i> <j> and -es <t> <i> <gamma> options
 Network::Network(std::string str, std::string strFormat) {
     if(strFormat.compare("newick") == 0)
         buildFromNewick(str);
@@ -524,10 +526,7 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
 
 std::string Network::getMSString(void) {
     std::vector<MSEvent*> events = toms();
-    int ntaxa = getTotalExtantTaxa();
-    std::string str = std::string("ms " + std::to_string(ntaxa) + " 1 -I " + std::to_string(ntaxa) + " ");
-    for(int i=0; i < ntaxa; i++)
-        str += "1 ";
+    std::string str = std::string("");
 
     for(MSEvent* e : events) {
         str += ((e->getEventType() == join) ? ((MSJoinEvent*)e)->toString() : ((MSSplitEvent*)e)->toString()) + " ";
