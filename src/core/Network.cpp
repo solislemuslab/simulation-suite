@@ -527,7 +527,24 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
 }
 
 std::string Network::getMSString(void) {
-    std::vector<MSEvent*> events = toms();
+    // Check to make sure the tree is ultrametric
+    double endTime = -1;
+    for(Node *p : nodes) {
+        if(p->getLft() == p->getRht()) {
+            std::cout << p->getName() << ": " << p->getTime() << std::endl;
+            if(endTime != -1) {
+                // Floating point issues...
+                if(std::abs(p->getTime() - endTime) > 1e-12) {
+                    std::cerr << "ERROR: Tree is not ultrametric. Returning blank ms string." << std::endl;
+                    return std::string("");
+                }
+            } else {
+                endTime = p->getTime();
+            }
+        }
+    }
+
+    std::vector<MSEvent*> events = toms(endTime);
     std::string str = std::string("");
 
     for(MSEvent* e : events) {
@@ -599,6 +616,7 @@ void Network::buildFromNewick(std::string newickStr) {
             // if the field for branch length, boot support, or inheritance probability are left blank, then we end up here.
             // so, we want to progress to the next step of reading :br_len:boot_supp:inher_prob
             if(readingBranchLength) {
+                warnBranchLength(readingBranchLength, warnedNoBranchLengths);
                 readingBranchLength = false;
                 readingBootSupport = true;
             } else if(readingBootSupport) {
@@ -716,47 +734,36 @@ void Network::warnHybridGamma(bool justReadHybrid, bool &warnedBlankOrZeroGamma,
 }
 
 void Network::setTimes(void) {
-    // First, find all the leaves. We are storing branch lengths of INCOMING branches,
-    // so it will be easiest to calculate node times going from the ground up.
-    // This is also how ms expects times to be, which is the main reason this is being
-    // implemented, so yay!
-    std::vector<Node*> leaves;
-    for(unsigned int i = 0; i < nodes.size(); i++) {
-        if(nodes[i] == NULL)
-            continue;
-        
-        if(nodes[i]->getLft() == NULL && nodes[i]->getRht() == NULL)
-            leaves.push_back(nodes[i]);
-    }
-
-    // Now, go through and set the time on all nodes. Time is time from present.
-    // We do this recursively because it is the easiest to implement
-    for(Node *leaf : leaves) {
-        leaf->setTime(0);
-        setTimeRecur(leaf);
-    }
+    // Set root time to 0 and go recursively from there
+    root->setTime(0);
+    if(root->getLft() != NULL)
+        setTimeRecur(root->getLft());
+    if(root->getRht() != NULL)
+        setTimeRecur(root->getRht());
 }
 
 void Network::setTimeRecur(Node *p) {
     Node *majAnc = p->getMajorAnc();
     Node *minAnc = p->getMinorAnc();
 
-    // check if majAnc exists
-    if(majAnc != NULL) {
-        // if it exists and its time is not set, set its time and then continue recursively
-        if(majAnc->getTime() == -1) {
-            majAnc->setTime(p->getTime() + p->getMajorBranchLength());
-            setTimeRecur(majAnc);
-        }
+    // if we have two ancs and one of their times have not been set yet, we have to wait
+    if(majAnc->getTime() == -1 || (minAnc != NULL && minAnc->getTime() == -1))
+        return;
+
+    // we will never have root in this function, so majAnc always exists
+    double timeFollowingMaj = majAnc->getTime() + p->getMajorBranchLength();
+    double timeFollowingMin = (minAnc == NULL) ? timeFollowingMaj : minAnc->getTime() + p->getMinorBranchLength();
+
+    if(timeFollowingMaj != timeFollowingMin) {
+        std::cerr << "ERROR: Branch lengths leading to node " << p->getName() << " disagree! Lengths are " << timeFollowingMaj << " and " << timeFollowingMin << "; quitting." << std::endl;
+        exit(-1);
     }
-    if(minAnc != NULL) {
-        // all the same stuff as with majAnc.
-        // if it exists and its time is not set, set its time and then continue recursively
-        if(minAnc->getTime() == -1) {
-            minAnc->setTime(p->getTime() + p->getMinorBranchLength());
-            setTimeRecur(minAnc);
-        }
-    }
+    p->setTime(timeFollowingMaj);
+
+    if(p->getLft() != NULL)
+        setTimeRecur(p->getLft());
+    if(p->getRht() != NULL)
+        setTimeRecur(p->getRht());
 }
 
 std::vector<std::string> Network::parseNewick(std::string ns) {
@@ -980,7 +987,7 @@ void Network::listNodes(void) {
     }
 }
 
-std::vector<MSEvent*> Network::toms(void) {
+std::vector<MSEvent*> Network::toms(double endTime) {
     std::vector<MSEvent*> events;
     // First, gather & name all leaves while setting the names of non-leaves to null
     std::vector<std::string> nodeNames;
@@ -1161,6 +1168,10 @@ std::vector<MSEvent*> Network::toms(void) {
             activeNodes.push_back(node);
         }
     }
+
+    // We have all of the events now, but ms has leaf times as 0, whereas we do not, so we need to flip the times
+    for(MSEvent *e : events)
+        e->setTime(endTime - e->getTime());
 
     sort(events.begin(), events.end(), [](MSEvent *a, MSEvent *b) {
         return a->getTime() < b->getTime();

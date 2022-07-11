@@ -54,7 +54,7 @@ class Network {
         std::string getInternalName(int);
         std::string getLeafName(int);
         int postmsPatchAndRenameRecur(Node*, int);
-        std::vector<MSEvent*> toms(void);
+        std::vector<MSEvent*> toms(double);
         void warnBranchLength(bool, bool&);
         void warnHybridGamma(bool justReadHybrid, bool &warnedBlankOrZeroGamma, std::string nodeName);
 };
