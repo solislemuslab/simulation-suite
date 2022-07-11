@@ -1,5 +1,5 @@
-#ifndef MS_Events_hpp
-#define MS_Events_hpp
+#ifndef SIMSUITE_CORE_MSEVENTS_HPP_
+#define SIMSUITE_CORE_MSEVENTS_HPP_
 
 #include <iostream>
 #include <string>

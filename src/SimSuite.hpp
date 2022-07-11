@@ -1,5 +1,5 @@
-#ifndef Sim_Suite_hpp
-#define Sim_Suite_hpp
+#ifndef SIMSUITE_SIMSUITE_HPP_
+#define SIMSUITE_SIMSUITE_HPP_
 
 #include <string>
 

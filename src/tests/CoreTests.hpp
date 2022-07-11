@@ -1,5 +1,5 @@
-#ifndef Core_Tests_hpp
-#define Core_Tests_hpp
+#ifndef SIMSUITE_TESTS_CORETESTS_HPP_
+#define SIMSUITE_TESTS_CORETESTS_HPP_
 
 #include <string>
 

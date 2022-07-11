@@ -1,9 +1,5 @@
-#ifndef DEBUG_NEWICK_PARSER
-#define DEBUG_NEWICK_PARSER
-#endif
-
-#ifndef Network_hpp
-#define Network_hpp
+#ifndef SIMSUITE_CORE_NETWORK_HPP_
+#define SIMSUITE_CORE_NETWORK_HPP_
 
 #include "MSEvents.hpp"
 

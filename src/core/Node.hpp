@@ -1,5 +1,5 @@
-#ifndef Node_hpp
-#define Node_hpp
+#ifndef SIMSUITE_CORE_NODE_HPP_
+#define SIMSUITE_CORE_NODE_HPP_
 
 #include <string>
 #include <iostream>
