@@ -56,6 +56,7 @@ class Network {
         int postmsPatchAndRenameRecur(Node*, int);
         std::vector<MSEvent*> toms(void);
         void warnBranchLength(bool, bool&);
+        void warnHybridGamma(bool justReadHybrid, bool &warnedBlankOrZeroGamma, std::string nodeName);
 };
 
 bool isomorphic(Network*, Network*);

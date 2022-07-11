@@ -537,19 +537,28 @@ std::string Network::getMSString(void) {
 }
 
 void Network::buildFromNewick(std::string newickStr) {
+    // parse the TRIMMED Newick string
+    newickStr.erase(std::remove_if(newickStr.begin(), newickStr.end(), ::isspace), newickStr.end());
     std::vector<std::string> tokens = parseNewick(newickStr);
 
+    // Some bools to make sure that we only warn for certain conditions once
     bool warnedNoBranchLengths = false;
+    bool warnedBlankOrZeroGamma = false;
     // build up the Network from the parsed Newick string
     bool readingBranchLength = false;
     bool readingBootSupport = false;
     bool readingGamma = false;
     bool namingInternalNode = false;
+    
+    bool waitingForGamma = false;
+    std::string waitingForGammaNodeName;
+
     Node* p = NULL;
     for(unsigned int i=0; i<tokens.size(); i++) {
         std::string token = tokens[i];
         if(token == "(") {
             warnBranchLength(readingBranchLength, warnedNoBranchLengths);
+            warnHybridGamma(waitingForGamma, warnedBlankOrZeroGamma, waitingForGammaNodeName);
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -570,6 +579,7 @@ void Network::buildFromNewick(std::string newickStr) {
             p = newNode;
         } else if(token == ")" || token == ",") {
             warnBranchLength(readingBranchLength, warnedNoBranchLengths);
+            warnHybridGamma(waitingForGamma, warnedBlankOrZeroGamma, waitingForGammaNodeName);
             readingBranchLength = false;
             readingBootSupport = false;
             readingGamma = false;
@@ -602,10 +612,12 @@ void Network::buildFromNewick(std::string newickStr) {
                 readingBranchLength = true;
             }
         } else if(token == ";") {
+            warnBranchLength(readingBranchLength, warnedNoBranchLengths);
+            warnHybridGamma(waitingForGamma, warnedBlankOrZeroGamma, waitingForGammaNodeName);
             namingInternalNode = false;
             // finished!
             if(p != root) {
-                std::cout << "ERROR: We expect to finish at the root node" << std::endl;
+                std::cout << "ERROR: We expect to finish at the root node, finished at " << p->getName() << ", " << p << std::endl;
                 exit(1);
             }
         } else {
@@ -634,6 +646,7 @@ void Network::buildFromNewick(std::string newickStr) {
                 double x = std::stod(token);
                 p->setGamma(x);
                 readingGamma = false;
+                waitingForGamma = false;
             } else if(namingInternalNode) {
                 p->setName(token);
             } else {
@@ -655,6 +668,12 @@ void Network::buildFromNewick(std::string newickStr) {
                     }
                     j += 1;
                 } while(ch != '\0');
+
+                if(ch == '#') {
+                    // Hybrid node
+                    waitingForGamma = true;
+                    waitingForGammaNodeName = token;
+                }
 
                 newNode->setName(token);
                 p = newNode;
@@ -686,6 +705,13 @@ void Network::warnBranchLength(bool readingBranchLength, bool &alreadyWarned) {
     if(readingBranchLength && !alreadyWarned) {
         std::cerr << "WARNING: At least one branch length was left unspecified and is defaulting to length 0." << std::endl;
         alreadyWarned = true;
+    }
+}
+
+void Network::warnHybridGamma(bool justReadHybrid, bool &warnedBlankOrZeroGamma, std::string nodeName) {
+    if(justReadHybrid && !warnedBlankOrZeroGamma) {
+        std::cerr << "CRITICAL WARNING: Gamma not specified for hybrid node " << nodeName << ". Topology will be preserved but all gamma values will be 0." << std::endl;
+        warnedBlankOrZeroGamma = true;
     }
 }
 
