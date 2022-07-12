@@ -207,7 +207,7 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
 
             // If we couldn't find one or both of the taxa involved, this is an error; quit
             if(fromTaxa == NULL || toTaxa == NULL) {
-                std::cout << "ERROR: When finding both taxa in a join event, one or both taxa could not be found; quitting." << std::endl;
+                std::cerr << "ERROR: When finding both taxa in a join event, one or both taxa could not be found; quitting." << std::endl;
                 exit(-1);
             }
 
@@ -259,7 +259,7 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
             
             // If p is still NULL, this is an error; quit
             if(p == NULL) {
-                std::cout << "ERROR: Node involved in split event not found when split event was reached; quitting." << std::endl;
+                std::cerr << "ERROR: Node involved in split event not found when split event was reached; quitting." << std::endl;
                 exit(-1);
             }
 
@@ -313,7 +313,7 @@ void Network::buildFromMS(std::vector<MSEvent*> events) {
             nodes.push_back(min);
             nodes.push_back(maj);
         } else {
-            std::cout << "ERROR: MSEvent is neither a split or join event; quitting." << std::endl;
+            std::cerr << "ERROR: MSEvent is neither a split or join event; quitting." << std::endl;
             exit(-1);
         }
     }
@@ -353,7 +353,7 @@ void Network::postmsPatchAndRename(void) {
 
             // If what we got is not what we expected, throw an error. This should never be thrown, this is just a sanity check really
             if(anc == NULL || child == NULL || nodes[i]->getRht() != NULL || nodes[i]->getMinorAnc() != NULL) {
-                std::cout << "ERROR: When patching network in the MSEvent reading process, one or more of the children or ancestors of a redundant node were not what we expected; quitting." << std::endl;
+                std::cerr << "ERROR: When patching network in the MSEvent reading process, one or more of the children or ancestors of a redundant node were not what we expected; quitting." << std::endl;
                 exit(-1);
             }
 
@@ -476,7 +476,7 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
 
     // When we get out of the for loop, spaceCount should be exactly 0. Throw an error if this is not the case
     if(spaceCount != 0) {
-        std::cout << "ERROR: Input ms command seqeuence was not in expected format; quitting." << std::endl;
+        std::cerr << "ERROR: Input ms command seqeuence was not in expected format; quitting." << std::endl;
         exit(-1);
     }
 
@@ -538,7 +538,7 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
             events.push_back(e);
         } else {
             // Improper input
-            std::cout << "ERROR: Input ms command invalid; quitting." << std::endl;
+            std::cerr << "ERROR: Input ms command invalid; quitting." << std::endl;
             exit(-1);
         }
     }
@@ -551,10 +551,9 @@ std::string Network::getMSString(void) {
     double endTime = -1;
     for(Node *p : nodes) {
         if(p->getLft() == p->getRht()) {
-            std::cout << p->getName() << ": " << p->getTime() << std::endl;
             if(endTime != -1) {
                 // Floating point issues...
-                if(std::abs(p->getTime() - endTime) > 1e-12) {
+                if(std::abs(p->getTime() - endTime) > 1e-9) {
                     std::cerr << "ERROR: Tree is not ultrametric. Returning blank ms string." << std::endl;
                     return std::string("");
                 }
@@ -626,7 +625,7 @@ void Network::buildFromNewick(std::string newickStr) {
 
             // move down one node
             if(p->getMajorAnc() == NULL) {
-                std::cout << "ERROR: We cannot find an expected ancestor at i=" << i << "; p == root gives: " << (p == root) << std::endl;
+                std::cerr << "ERROR: We cannot find an expected ancestor at i=" << i << "; p == root gives: " << (p == root) << std::endl;
                 exit(1);
             }
             p = p->getMajorAnc();
@@ -643,7 +642,7 @@ void Network::buildFromNewick(std::string newickStr) {
                 readingBootSupport = false;
                 readingGamma = true;
             } else if(readingGamma) {
-                std::cout << "ERROR: Read a sequence of four colons (possibly with names/numbers in between some of them). This is not allowed by the format; quitting." << std::endl;
+                std::cerr << "ERROR: Read a sequence of four colons (possibly with names/numbers in between some of them). This is not allowed by the format; quitting." << std::endl;
                 exit(-1);
             } else {
                 // begin reading a branch length
@@ -655,7 +654,7 @@ void Network::buildFromNewick(std::string newickStr) {
             namingInternalNode = false;
             // finished!
             if(p != root) {
-                std::cout << "ERROR: We expect to finish at the root node, finished at " << p->getName() << ", " << p << std::endl;
+                std::cerr << "ERROR: We expect to finish at the root node, finished at " << p->getName() << ", " << p << std::endl;
                 exit(1);
             }
         } else {
@@ -748,7 +747,7 @@ void Network::warnBranchLength(bool readingBranchLength, bool &alreadyWarned) {
 
 void Network::warnHybridGamma(bool justReadHybrid, bool &warnedBlankOrZeroGamma, std::string nodeName) {
     if(justReadHybrid && !warnedBlankOrZeroGamma) {
-        std::cerr << "CRITICAL WARNING: Gamma not specified for hybrid node " << nodeName << ". Topology will be preserved but all gamma values will be 0." << std::endl;
+        std::cerr << "WARNING: Gamma not specified for hybrid node " << nodeName << ". Topology will be preserved but ALL gamma values will default to 0." << std::endl;
         warnedBlankOrZeroGamma = true;
     }
 }
@@ -774,7 +773,7 @@ void Network::setTimeRecur(Node *p) {
     double timeFollowingMaj = majAnc->getTime() + p->getMajorBranchLength();
     double timeFollowingMin = (minAnc == NULL) ? timeFollowingMaj : minAnc->getTime() + p->getMinorBranchLength();
 
-    if(timeFollowingMaj != timeFollowingMin) {
+    if(std::abs(timeFollowingMaj - timeFollowingMin) > 1e-9) {
         std::cerr << "ERROR: Branch lengths leading to node " << p->getName() << " disagree! Lengths are " << timeFollowingMaj << " and " << timeFollowingMin << "; quitting." << std::endl;
         exit(-1);
     }
@@ -1082,7 +1081,7 @@ std::vector<MSEvent*> Network::toms(double endTime) {
         for(i = 0; i < activeNodes.size(); i++) {
             Node *p = activeNodes[i];
             if(p == NULL) {
-                std::cout << "ERROR: Active node is blank; quitting." << std::endl << std::flush;
+                std::cerr << "ERROR: Active node is blank; quitting." << std::endl << std::flush;
                 exit(-1);
             }
 

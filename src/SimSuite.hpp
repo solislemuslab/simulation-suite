@@ -2,9 +2,12 @@
 #define SIMSUITE_SIMSUITE_HPP_
 
 #include <string>
+#include <vector>
 
 namespace SimSuite {
     std::string newickToMS(std::string newickStr);
+    std::string msToNewick(std::string msStr);
+    std::vector<std::string> newickFileToMS(std::string location);
 }
 
 #endif

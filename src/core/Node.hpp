@@ -6,14 +6,14 @@
 
 class Node {
     public:
-                Node(void);
-        Node*   getLft(void) { return left; }
-        Node*   getRht(void) { return right; }
+        Node(void);
+        Node* getLft(void) { return left; }
+        Node* getRht(void) { return right; }
 
-        Node*   getMajorAnc(void) { return majorAncestor; }
-        Node*   getMinorAnc(void) { return minorAncestor; }
+        Node* getMajorAnc(void) { return majorAncestor; }
+        Node* getMinorAnc(void) { return minorAncestor; }
 
-        int     getIndex(void) { return index; }
+        int getIndex(void) { return index; }
         void setLft(Node* p) { left = p; }
         void setRht(Node* p) { right = p; }
         
@@ -44,7 +44,6 @@ class Node {
         std::string getName(void) { return name; }
         
         void printInfo(void);
-        bool touched = false;
 
         void setHiddenID(int id) { hiddenID = id; }
         int getHiddenID(void) { return hiddenID; }

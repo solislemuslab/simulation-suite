@@ -23,6 +23,9 @@
 #include <iostream>
 
 int main(int narg, char **argv) {
+    std::vector<std::string> msStrs = SimSuite::newickFileToMS("newick-strings.txt");
+
+    /*
     // -----------------------------------------------------------------------
     // - Example content; should be moved to a different file at some point. -
     // -----------------------------------------------------------------------
@@ -63,4 +66,5 @@ int main(int narg, char **argv) {
     std::cout << "GAB: Three-leaf network example, ultrametric" << std::endl;
     std::string threeTaxNet = SimSuite::newickToMS("((((A:0.25)#H1:0.25,B:0.5):0.5,#H1:::0.1):0.5,C:1.0);");
     std::cout << threeTaxNet << std::endl << std::endl;  
+    */
 }

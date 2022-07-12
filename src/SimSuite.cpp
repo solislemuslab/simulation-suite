@@ -24,6 +24,7 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
+#include <fstream>
 
 namespace SimSuite {
     std::string newickToMS(std::string newickStr) {
@@ -36,5 +37,21 @@ namespace SimSuite {
         Network net(msStr, "ms");
         std::string newick = net.getNewickRepresentation();
         return newick;
+    }
+
+    std::vector<std::string> newickFileToMS(std::string location) {
+        std::ifstream ifs(location);
+        if(!ifs.is_open()) {
+            std::cerr << "ERROR: Failed to open file " << location << "; quitting." << std::endl;
+            exit(-1);
+        }
+
+        std::vector<std::string> msStrs;
+        std::string line;
+
+        while(std::getline(ifs, line))
+            msStrs.push_back(newickToMS(line));
+        
+        return msStrs;
     }
 }
