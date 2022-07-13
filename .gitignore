@@ -13,6 +13,7 @@ Src/main
 *.exe
 *.o
 *.so
+*.a
 
 # Intermediate files #
 ######################

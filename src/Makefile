@@ -8,14 +8,20 @@ ifeq ($(OS),Windows_NT)
 	PATH_SEP=\\
 	
 	NULL_DEVICE=nul
+else
+	RM := $(RM) -r
 endif
 
-build: clean core-main main
+all: core-main main test library
 
-all: core-main main test
+build: clean library
 
 test: CoreTests.o SimSuite.o Network.o Node.o
 	$(CPP) $(CPPFLAGS) CoreTests.o SimSuite.o Network.o Node.o -o test
+
+library: SimSuite.o Network.o Node.o
+	$(CPP) $(CPPFLAGS) -c SimSuite.cpp -o lib_simsuite.o
+	ar rcs lib_simsuite.a lib_simsuite.o Network.o Node.o
 
 
 Node.o: core/Node.cpp core/Node.hpp
@@ -42,3 +48,7 @@ clean:
 	$(RM) .$(PATH_SEP)core$(PATH_SEP)*.gch 2> $(NULL_DEVICE)
 	$(RM) .$(PATH_SEP)tests$(PATH_SEP)*.gch 2> $(NULL_DEVICE)
 	$(RM) .$(PATH_SEP)*.gch 2> $(NULL_DEVICE)
+	$(RM) .$(PATH_SEP)core-main.dSYM 2> $(NULL_DEVICE)
+	$(RM) .$(PATH_SEP)main.dSYM 2> $(NULL_DEVICE)
+	$(RM) main core-main 2> $(NULL_DEVICE)
+	$(RM) lib_simsuite.a 2> $(NULL_DEVICE)
