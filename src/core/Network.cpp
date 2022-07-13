@@ -549,17 +549,33 @@ std::vector<MSEvent*> Network::parseMSEvents(std::string str) {
 std::string Network::getMSString(void) {
     // Check to make sure the tree is ultrametric
     double endTime = -1;
+    bool ultrametric = true;
+
+    // used if the tree is not ultrametric
+    std::vector<Node*> leaves;
+    std::vector<int> times;
     for(Node *p : nodes) {
         if(p->getLft() == p->getRht()) {
+            leaves.push_back(p);
             if(endTime != -1) {
                 // Floating point issues...
-                if(std::abs(p->getTime() - endTime) > 1e-9) {
-                    std::cerr << "ERROR: Tree is not ultrametric. Returning blank ms string." << std::endl;
-                    return std::string("");
-                }
+                endTime = std::max(endTime, p->getTime());
+                if(std::abs(p->getTime() - endTime) > 1e-9)
+                    ultrametric = false;
             } else {
                 endTime = p->getTime();
             }
+        }
+    }
+
+    if(!ultrametric) {
+        std::cerr << "WARNING: ms requires ultramteric input, and the input was not ultrametric, so branch lengths are automatically being extended to make the input ultrametric." << std::endl;
+
+        // we are going to edit the leaf times to make the tree ultrametric, and we have
+        // to store their original lengths in order to revert back
+        for(Node *p : leaves) {
+            times.push_back(p->getTime());
+            p->setTime(endTime);
         }
     }
 
@@ -569,6 +585,13 @@ std::string Network::getMSString(void) {
     for(MSEvent* e : events) {
         str += ((e->getEventType() == join) ? ((MSJoinEvent*)e)->toString() : ((MSSplitEvent*)e)->toString()) + " ";
     }
+
+    if(!ultrametric) {
+        // revert the branch lengths back
+        for(unsigned int i = 0; i < leaves.size(); i++)
+            leaves[i]->setTime(times[i]);
+    }
+
     return str.substr(0, str.length()-1);
 }
 
