@@ -24,6 +24,7 @@
 
 int main(int narg, char **argv) {
     std::vector<std::string> msStrs = SimSuite::newickFileToMS("newick-strings.txt");
+    std::cout << "Getting ms from user input Newick." << std::endl << SimSuite::msFromUserInputNewick() << std::endl;
 
     /*
     // -----------------------------------------------------------------------

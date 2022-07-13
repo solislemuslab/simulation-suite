@@ -54,4 +54,11 @@ namespace SimSuite {
         
         return msStrs;
     }
+
+    std::string msFromUserInputNewick(void) {
+        std::string newick;
+        std::cin >> newick;
+        Network net(newick, "newick");
+        return net.getMSString();
+    }
 }
