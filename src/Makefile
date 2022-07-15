@@ -10,6 +10,7 @@ ifeq ($(OS),Windows_NT)
 	NULL_DEVICE=nul
 else
 	RM := $(RM) -r
+	CPP := $(CPP) -I/usr/local/boost_1_79_0/
 endif
 
 all: core-main main test library
